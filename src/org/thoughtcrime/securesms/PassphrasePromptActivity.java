@@ -180,14 +180,7 @@ public class PassphrasePromptActivity extends PassphraseActivity {
   }
 
   private void handleAuthenticated() {
-    try {
-      authenticated = true;
-      
-      MasterSecret masterSecret = MasterSecretUtil.getMasterSecret(this, MasterSecretUtil.UNENCRYPTED_PASSPHRASE);
-      setMasterSecret(masterSecret);
-    } catch (InvalidPassphraseException e) {
-      throw new AssertionError(e);
-    }
+    authenticated = true;
   }
 
   private void setPassphraseVisibility(boolean visibility) {

@@ -56,7 +56,6 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class MasterSecretUtil {
 
-  public static final String UNENCRYPTED_PASSPHRASE  = "unencrypted";
   public static final String PREFERENCES_NAME        = "SecureSMS-Preferences";
 
   private static final String ASYMMETRIC_LOCAL_PUBLIC_DJB   = "asymmetric_master_secret_curve25519_public";

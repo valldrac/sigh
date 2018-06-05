@@ -78,12 +78,6 @@ public class PassphraseChangeActivity extends PassphraseActivity {
 
     this.okButton.setOnClickListener(new OkButtonClickListener());
     this.cancelButton.setOnClickListener(new CancelButtonClickListener());
-
-    if (TextSecurePreferences.isPasswordDisabled(this)) {
-      this.originalPassphrase.setVisibility(View.GONE);
-    } else {
-      this.originalPassphrase.setVisibility(View.VISIBLE);
-    }
   }
 
   private void verifyAndSavePassphrases() {
@@ -94,10 +88,6 @@ public class PassphraseChangeActivity extends PassphraseActivity {
     String original         = (originalText == null ? "" : originalText.toString());
     String passphrase       = (newText == null ? "" : newText.toString());
     String passphraseRepeat = (repeatText == null ? "" : repeatText.toString());
-
-    if (TextSecurePreferences.isPasswordDisabled(this)) {
-      original = MasterSecretUtil.UNENCRYPTED_PASSPHRASE;
-    }
 
     if (!passphrase.equals(passphraseRepeat)) {
       this.newPassphrase.setText("");
@@ -140,7 +130,6 @@ public class PassphraseChangeActivity extends PassphraseActivity {
     protected MasterSecret doInBackground(String... params) {
       try {
         MasterSecret masterSecret = MasterSecretUtil.changeMasterSecretPassphrase(context, params[0], params[1]);
-        TextSecurePreferences.setPasswordDisabled(context, false);
 
         return masterSecret;
 

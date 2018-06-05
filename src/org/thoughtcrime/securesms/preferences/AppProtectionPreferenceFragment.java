@@ -76,10 +76,10 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
     super.onResume();
     ((ApplicationPreferencesActivity) getActivity()).getSupportActionBar().setTitle(R.string.preferences__privacy);
 
-    if (!TextSecurePreferences.isPasswordDisabled(getContext())) initializePassphraseTimeoutSummary();
-    else                                                         initializeScreenLockTimeoutSummary();
-
-    disablePassphrase.setChecked(!TextSecurePreferences.isPasswordDisabled(getActivity()));
+//    if (!TextSecurePreferences.isPasswordDisabled(getContext())) initializePassphraseTimeoutSummary();
+//    else                                                         initializeScreenLockTimeoutSummary();
+//
+//    disablePassphrase.setChecked(!TextSecurePreferences.isPasswordDisabled(getActivity()));
   }
 
   private void initializePassphraseTimeoutSummary() {
@@ -100,21 +100,21 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
   }
 
   private void initializeVisibility() {
-    if (TextSecurePreferences.isPasswordDisabled(getContext())) {
-      findPreference("pref_enable_passphrase_temporary").setVisible(false);
-      findPreference(TextSecurePreferences.CHANGE_PASSPHRASE_PREF).setVisible(false);
-      findPreference(TextSecurePreferences.PASSPHRASE_TIMEOUT_INTERVAL_PREF).setVisible(false);
-      findPreference(TextSecurePreferences.PASSPHRASE_TIMEOUT_PREF).setVisible(false);
-
-      KeyguardManager keyguardManager = (KeyguardManager)getContext().getSystemService(Context.KEYGUARD_SERVICE);
-      if (Build.VERSION.SDK_INT < 16 || !keyguardManager.isKeyguardSecure()) {
-        ((SwitchPreferenceCompat)findPreference(TextSecurePreferences.SCREEN_LOCK)).setChecked(false);
-        findPreference(TextSecurePreferences.SCREEN_LOCK).setEnabled(false);
-      }
-    } else {
-      findPreference(TextSecurePreferences.SCREEN_LOCK).setVisible(false);
-      findPreference(TextSecurePreferences.SCREEN_LOCK_TIMEOUT).setVisible(false);
-    }
+//    if (TextSecurePreferences.isPasswordDisabled(getContext())) {
+//      findPreference("pref_enable_passphrase_temporary").setVisible(false);
+//      findPreference(TextSecurePreferences.CHANGE_PASSPHRASE_PREF).setVisible(false);
+//      findPreference(TextSecurePreferences.PASSPHRASE_TIMEOUT_INTERVAL_PREF).setVisible(false);
+//      findPreference(TextSecurePreferences.PASSPHRASE_TIMEOUT_PREF).setVisible(false);
+//
+//      KeyguardManager keyguardManager = (KeyguardManager)getContext().getSystemService(Context.KEYGUARD_SERVICE);
+//      if (Build.VERSION.SDK_INT < 16 || !keyguardManager.isKeyguardSecure()) {
+//        ((SwitchPreferenceCompat)findPreference(TextSecurePreferences.SCREEN_LOCK)).setChecked(false);
+//        findPreference(TextSecurePreferences.SCREEN_LOCK).setEnabled(false);
+//      }
+//    } else {
+//      findPreference(TextSecurePreferences.SCREEN_LOCK).setVisible(false);
+//      findPreference(TextSecurePreferences.SCREEN_LOCK_TIMEOUT).setVisible(false);
+//    }
   }
 
   private class ScreenLockListener implements Preference.OnPreferenceChangeListener {
@@ -188,18 +188,10 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
     final String onRes               = context.getString(R.string.ApplicationPreferencesActivity_on);
     final String offRes              = context.getString(R.string.ApplicationPreferencesActivity_off);
 
-    if (TextSecurePreferences.isPasswordDisabled(context) && !TextSecurePreferences.isScreenLockEnabled(context)) {
-      if (TextSecurePreferences.isRegistrationtLockEnabled(context)) {
-        return context.getString(privacySummaryResId, offRes, onRes);
-      } else {
-        return context.getString(privacySummaryResId, offRes, offRes);
-      }
+    if (TextSecurePreferences.isRegistrationtLockEnabled(context)) {
+      return context.getString(privacySummaryResId, onRes, onRes);
     } else {
-      if (TextSecurePreferences.isRegistrationtLockEnabled(context)) {
-        return context.getString(privacySummaryResId, onRes, onRes);
-      } else {
-        return context.getString(privacySummaryResId, onRes, offRes);
-      }
+      return context.getString(privacySummaryResId, onRes, offRes);
     }
   }
 
@@ -241,31 +233,31 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
 
     @Override
     public boolean onPreferenceChange(final Preference preference, Object newValue) {
-      if (((CheckBoxPreference)preference).isChecked()) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle(R.string.ApplicationPreferencesActivity_disable_passphrase);
-        builder.setMessage(R.string.ApplicationPreferencesActivity_this_will_permanently_unlock_signal_and_message_notifications);
-        builder.setIconAttribute(R.attr.dialog_alert_icon);
-        builder.setPositiveButton(R.string.ApplicationPreferencesActivity_disable, (dialog, which) -> {
-          MasterSecretUtil.changeMasterSecretPassphrase(getActivity(),
-                                                        KeyCachingService.getMasterSecret(getContext()),
-                                                        MasterSecretUtil.UNENCRYPTED_PASSPHRASE);
-
-          TextSecurePreferences.setPasswordDisabled(getActivity(), true);
-          ((CheckBoxPreference)preference).setChecked(false);
-
-          Intent intent = new Intent(getActivity(), KeyCachingService.class);
-          intent.setAction(KeyCachingService.DISABLE_ACTION);
-          getActivity().startService(intent);
-
-          initializeVisibility();
-        });
-        builder.setNegativeButton(android.R.string.cancel, null);
-        builder.show();
-      } else {
-        Intent intent = new Intent(getActivity(), PassphraseChangeActivity.class);
-        startActivity(intent);
-      }
+//      if (((CheckBoxPreference)preference).isChecked()) {
+//        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+//        builder.setTitle(R.string.ApplicationPreferencesActivity_disable_passphrase);
+//        builder.setMessage(R.string.ApplicationPreferencesActivity_this_will_permanently_unlock_signal_and_message_notifications);
+//        builder.setIconAttribute(R.attr.dialog_alert_icon);
+//        builder.setPositiveButton(R.string.ApplicationPreferencesActivity_disable, (dialog, which) -> {
+//          MasterSecretUtil.changeMasterSecretPassphrase(getActivity(),
+//                                                        KeyCachingService.getMasterSecret(getContext()),
+//                                                        MasterSecretUtil.UNENCRYPTED_PASSPHRASE);
+//
+//          TextSecurePreferences.setPasswordDisabled(getActivity(), true);
+//          ((CheckBoxPreference)preference).setChecked(false);
+//
+//          Intent intent = new Intent(getActivity(), KeyCachingService.class);
+//          intent.setAction(KeyCachingService.DISABLE_ACTION);
+//          getActivity().startService(intent);
+//
+//          initializeVisibility();
+//        });
+//        builder.setNegativeButton(android.R.string.cancel, null);
+//        builder.show();
+//      } else {
+//        Intent intent = new Intent(getActivity(), PassphraseChangeActivity.class);
+//        startActivity(intent);
+//      }
 
       return false;
     }

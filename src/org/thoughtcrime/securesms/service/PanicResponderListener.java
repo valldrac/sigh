@@ -18,8 +18,7 @@ public class PanicResponderListener extends BroadcastReceiver {
 
   @Override
   public void onReceive(Context context, Intent intent) {
-    if (intent != null  && !TextSecurePreferences.isPasswordDisabled(context) &&
-        "info.guardianproject.panic.action.TRIGGER".equals(intent.getAction()))
+    if (intent != null && "info.guardianproject.panic.action.TRIGGER".equals(intent.getAction()))
     {
       Intent lockIntent = new Intent(context, KeyCachingService.class);
       lockIntent.setAction(KeyCachingService.CLEAR_KEY_ACTION);
