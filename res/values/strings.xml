@@ -463,11 +463,14 @@
     <string name="MessageRecord_you_marked_your_safety_number_with_s_unverified">You marked your safety number with %s unverified</string>
     <string name="MessageRecord_you_marked_your_safety_number_with_s_unverified_from_another_device">You marked your safety number with %s unverified from another device</string>
 
-
     <!-- PassphraseChangeActivity -->
     <string name="PassphraseChangeActivity_passphrases_dont_match_exclamation">Passphrases don\'t match!</string>
     <string name="PassphraseChangeActivity_incorrect_old_passphrase_exclamation">Incorrect old passphrase!</string>
     <string name="PassphraseChangeActivity_enter_new_passphrase_exclamation">Enter new passphrase!</string>
+
+    <!-- PassphraseCreateActivity -->
+    <string name="PassphraseCreateActivity_passphrases_dont_match_exclamation">Passphrases don\'t match!</string>
+    <string name="PassphraseCreateActivity_enter_new_passphrase_exclamation">Enter new passphrase!</string>
 
     <!-- DeviceProvisioningActivity -->
     <string name="DeviceProvisioningActivity_link_this_device">Link this device?</string>
@@ -800,6 +803,13 @@
     <string name="change_passphrase_activity__old_passphrase">Old passphrase</string>
     <string name="change_passphrase_activity__new_passphrase">New passphrase</string>
     <string name="change_passphrase_activity__repeat_new_passphrase">Repeat new passphrase</string>
+
+    <!-- create_passphrase_activity -->
+    <string name="create_passphrase_activity__please_choose_a_passphrase_that_will_be_used_to_locally_encrypt_your_data_this_should_be_a_strong_passphrase">Please choose a passphrase that will be used to locally encrypt your data.\n\nThis should be a strong passphrase.</string>
+    <string name="create_passphrase_activity__new_passphrase">New passphrase</string>
+    <string name="create_passphrase_activity__repeat_new_passphrase">Repeat new passphrase</string>
+    <string name="create_passphrase_activity__continue">Continue</string>
+    <string name="create_passphrase_activity__generating_secrets">GENERATING SECRETS</string>
 
     <!-- contact_selection_activity -->
     <string name="contact_selection_activity__enter_name_or_number">Enter name or number</string>

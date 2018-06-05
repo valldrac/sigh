@@ -16,12 +16,20 @@
  */
 package org.thoughtcrime.securesms;
 
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.text.Editable;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 
 import org.thoughtcrime.securesms.crypto.IdentityKeyUtil;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.crypto.MasterSecretUtil;
+import org.thoughtcrime.securesms.util.DynamicLanguage;
+import org.thoughtcrime.securesms.util.DynamicTheme;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.Util;
 import org.thoughtcrime.securesms.util.VersionTracker;
@@ -34,10 +42,20 @@ import org.thoughtcrime.securesms.util.VersionTracker;
 
 public class PassphraseCreateActivity extends PassphraseActivity {
 
-  public PassphraseCreateActivity() { }
+  private DynamicTheme    dynamicTheme    = new DynamicTheme();
+  private DynamicLanguage dynamicLanguage = new DynamicLanguage();
+
+  private LinearLayout createLayout;
+  private LinearLayout progressLayout;
+
+  private EditText newPassphrase;
+  private EditText repeatPassphrase;
+  private Button   okButton;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    dynamicTheme.onCreate(this);
+    dynamicLanguage.onCreate(this);
     super.onCreate(savedInstanceState);
 
     setContentView(R.layout.create_passphrase_activity);
@@ -45,42 +63,94 @@ public class PassphraseCreateActivity extends PassphraseActivity {
     initializeResources();
   }
 
-  private void initializeResources() {
-    new SecretGenerator().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, MasterSecretUtil.UNENCRYPTED_PASSPHRASE);
+  @Override
+  public void onResume() {
+    super.onResume();
+    dynamicTheme.onResume(this);
+    dynamicLanguage.onResume(this);
   }
 
-  private class SecretGenerator extends AsyncTask<String, Void, Void> {
-    private MasterSecret   masterSecret;
+  private void initializeResources() {
+    this.createLayout            = (LinearLayout) findViewById(R.id.create_layout   );
+    this.progressLayout          = (LinearLayout) findViewById(R.id.progress_layout );
+
+    this.newPassphrase           = (EditText) findViewById(R.id.new_passphrase      );
+    this.repeatPassphrase        = (EditText) findViewById(R.id.repeat_passphrase   );
+    this.okButton                = (Button  ) findViewById(R.id.ok_button           );
+
+    this.okButton.setOnClickListener(new OkButtonClickListener());
+  }
+
+  private void verifyAndSavePassphrases() {
+    Editable newText      = this.newPassphrase.getText();
+    Editable repeatText   = this.repeatPassphrase.getText();
+
+    String passphrase       = (newText == null ? "" : newText.toString());
+    String passphraseRepeat = (repeatText == null ? "" : repeatText.toString());
+
+    if (!passphrase.equals(passphraseRepeat)) {
+      this.newPassphrase.setText("");
+      this.repeatPassphrase.setText("");
+      this.newPassphrase.setError(getString(R.string.PassphraseCreateActivity_passphrases_dont_match_exclamation));
+      this.newPassphrase.requestFocus();
+    } else if (passphrase.equals("")) {
+      this.newPassphrase.setError(getString(R.string.PassphraseCreateActivity_enter_new_passphrase_exclamation));
+      this.newPassphrase.requestFocus();
+    } else {
+      new SecretGenerator(this).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, passphrase);
+    }
+  }
+
+  private class OkButtonClickListener implements View.OnClickListener {
+    public void onClick(View v) {
+      verifyAndSavePassphrases();
+    }
+  }
+
+  private class SecretGenerator extends AsyncTask<String, Void, MasterSecret> {
+    private final Context context;
+
+    public SecretGenerator(Context context) {
+      this.context = context;
+    }
 
     @Override
     protected void onPreExecute() {
+      createLayout.setVisibility(View.GONE);
+      progressLayout.setVisibility(View.VISIBLE);
     }
 
     @Override
-    protected Void doInBackground(String... params) {
+    protected MasterSecret doInBackground(String... params) {
       String passphrase = params[0];
-      masterSecret      = MasterSecretUtil.generateMasterSecret(PassphraseCreateActivity.this,
-                                                                passphrase);
 
-      MasterSecretUtil.generateAsymmetricMasterSecret(PassphraseCreateActivity.this, masterSecret);
-      IdentityKeyUtil.generateIdentityKeys(PassphraseCreateActivity.this);
-      VersionTracker.updateLastSeenVersion(PassphraseCreateActivity.this);
+      MasterSecret masterSecret = MasterSecretUtil.generateMasterSecret(context, passphrase);
 
-      TextSecurePreferences.setLastExperienceVersionCode(PassphraseCreateActivity.this, Util.getCurrentApkReleaseVersion(PassphraseCreateActivity.this));
-      TextSecurePreferences.setPasswordDisabled(PassphraseCreateActivity.this, true);
-      TextSecurePreferences.setReadReceiptsEnabled(PassphraseCreateActivity.this, true);
+      if (masterSecret != null) {
+        MasterSecretUtil.generateAsymmetricMasterSecret(context, masterSecret);
+        IdentityKeyUtil.generateIdentityKeys(context);
+        VersionTracker.updateLastSeenVersion(context);
 
-      return null;
+        TextSecurePreferences.setLastExperienceVersionCode(context, Util.getCurrentApkReleaseVersion(context));
+        TextSecurePreferences.setReadReceiptsEnabled(context, true);
+      }
+
+      return masterSecret;
     }
 
     @Override
-    protected void onPostExecute(Void param) {
-      setMasterSecret(masterSecret);
+    protected void onPostExecute(MasterSecret masterSecret) {
+      if (masterSecret != null) {
+        setMasterSecret(masterSecret);
+      }
     }
   }
 
   @Override
   protected void cleanup() {
+    this.newPassphrase    = null;
+    this.repeatPassphrase = null;
+
     System.gc();
   }
 }
