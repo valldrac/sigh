@@ -61,7 +61,7 @@ public class DatabaseSecretProvider {
 
   private DatabaseSecret createAndStoreDatabaseSecret(@NonNull Context context) {
     SecureRandom random = new SecureRandom();
-    byte[]       secret = new byte[32];
+    byte[]       secret = new byte[16];
     random.nextBytes(secret);
 
     DatabaseSecret databaseSecret = new DatabaseSecret(secret);
