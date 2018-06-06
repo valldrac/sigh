@@ -257,6 +257,7 @@ android {
     }
 
     defaultConfig {
+        applicationId "org.sigh.app"
         versionCode 363
         versionName "4.20.5"
 
