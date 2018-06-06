@@ -232,10 +232,13 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
 
   private String getDatabasePassword() {
     MasterSecret masterSecret = KeyCachingService.getMasterSecret(context);
-    if (masterSecret != null) {
-      return Hex.toStringCondensed(Util.combine(databaseSecret.asBytes(), masterSecret.getEncryptionKey().getEncoded()));
+
+    if (masterSecret == null) {
+      Log.w(TAG, "getDatabasePassword(), database locked");
+      return null;
     }
-    return null;
+
+    return Hex.toStringCondensed(Util.combine(databaseSecret.asBytes(), masterSecret.getEncryptionKey().getEncoded()));
   }
 
   public void markCurrent(SQLiteDatabase db) {

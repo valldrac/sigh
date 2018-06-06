@@ -799,6 +799,9 @@
 
     <string name="attachment_type_selector__drawer_description">Toggle attachment drawer</string>
 
+    <!-- prompt_passphrase_activity -->
+    <string name="prompt_passphrase_activity__enter_passphrase">Enter passphrase</string>
+
     <!-- change_passphrase_activity -->
     <string name="change_passphrase_activity__old_passphrase">Old passphrase</string>
     <string name="change_passphrase_activity__new_passphrase">New passphrase</string>

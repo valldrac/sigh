@@ -190,7 +190,6 @@ public class KeyCachingService extends Service {
   }
 
   private void handleLockToggled() {
-    stopForeground(true);
   }
 
   private void handleLocaleChanged() {
@@ -199,27 +198,23 @@ public class KeyCachingService extends Service {
   }
 
   private void startTimeoutIfAppropriate() {
-//    boolean timeoutEnabled = TextSecurePreferences.isPassphraseTimeoutEnabled(this);
-//    long    screenTimeout  = TextSecurePreferences.getScreenLockTimeout(this);
-//
-//    if ((activitiesRunning == 0) && (KeyCachingService.masterSecret != null) &&
-//        (timeoutEnabled && !TextSecurePreferences.isPasswordDisabled(this)) ||
-//        (screenTimeout >= 60 && TextSecurePreferences.isScreenLockEnabled(this)))
-//    {
-//      long passphraseTimeoutMinutes = TextSecurePreferences.getPassphraseTimeoutInterval(this);
-//      long screenLockTimeoutSeconds = TextSecurePreferences.getScreenLockTimeout(this);
-//
-//      long timeoutMillis;
-//
-//      if (!TextSecurePreferences.isPasswordDisabled(this)) timeoutMillis = TimeUnit.MINUTES.toMillis(passphraseTimeoutMinutes);
-//      else                                                        timeoutMillis  = TimeUnit.SECONDS.toMillis(screenLockTimeoutSeconds);
-//
-//      Log.w("KeyCachingService", "Starting timeout: " + timeoutMillis);
-//
-//      AlarmManager alarmManager = ServiceUtil.getAlarmManager(this);
-//      alarmManager.cancel(pending);
-//      alarmManager.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + timeoutMillis, pending);
-//    }
+    long    screenTimeout  = TextSecurePreferences.getScreenLockTimeout(this);
+
+    if ((activitiesRunning == 0) && (KeyCachingService.masterSecret != null) &&
+        (screenTimeout >= 60) && TextSecurePreferences.isScreenLockEnabled(this))
+    {
+      long screenLockTimeoutSeconds = TextSecurePreferences.getScreenLockTimeout(this);
+
+      long timeoutMillis;
+
+      timeoutMillis  = TimeUnit.SECONDS.toMillis(screenLockTimeoutSeconds);
+
+      Log.w("KeyCachingService", "Starting timeout: " + timeoutMillis);
+
+      AlarmManager alarmManager = ServiceUtil.getAlarmManager(this);
+      alarmManager.cancel(pending);
+      alarmManager.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + timeoutMillis, pending);
+    }
   }
 
   @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
