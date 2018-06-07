@@ -148,7 +148,7 @@ public class TextSecurePreferences {
   private static final String REGISTRATION_LOCK_NEXT_REMINDER_INTERVAL = "pref_registration_lock_next_reminder_interval";
 
   public static boolean isScreenLockEnabled(@NonNull Context context) {
-    return getBooleanPreference(context, SCREEN_LOCK, false);
+    return getBooleanPreference(context, SCREEN_LOCK, true);
   }
 
   public static void setScreenLockEnabled(@NonNull Context context, boolean value) {
@@ -156,7 +156,7 @@ public class TextSecurePreferences {
   }
 
   public static long getScreenLockTimeout(@NonNull Context context) {
-    return getLongPreference(context, SCREEN_LOCK_TIMEOUT, 0);
+    return getLongPreference(context, SCREEN_LOCK_TIMEOUT, 900);
   }
 
   public static void setScreenLockTimeout(@NonNull Context context, long value) {
