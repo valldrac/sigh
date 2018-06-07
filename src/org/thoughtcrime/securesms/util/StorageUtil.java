@@ -8,6 +8,7 @@ import android.support.annotation.Nullable;
 import com.annimon.stream.Objects;
 import com.annimon.stream.Stream;
 
+import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.database.NoExternalStorageException;
 
 import java.io.File;
@@ -33,7 +34,7 @@ public class StorageUtil {
       throw new NoExternalStorageException();
     }
 
-    File signal = new File(storage, "Signal");
+    File signal = new File(storage, context.getString(R.string.app_name));
     File backups = new File(signal, "Backups");
 
     if (!backups.exists()) {
