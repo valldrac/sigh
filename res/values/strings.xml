@@ -215,6 +215,7 @@
 
     <!-- ConversationListActivity -->
     <string name="ConversationListActivity_there_is_no_browser_installed_on_your_device">There is no browser installed on your device.</string>
+    <string name="ConversationListActivity_signal_is_clearing_secrets">Signal is clearing secrets...</string>
 
     <!-- ConversationListFragment -->
     <string name="ConversationListFragment_no_results_found_for_s_">No results found for \'%s\'</string>

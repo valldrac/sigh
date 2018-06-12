@@ -81,10 +81,17 @@ public class KeyCachingService extends Service {
   public KeyCachingService() {}
 
   public static synchronized boolean isLocked(Context context) {
-    return getMasterSecret(context) == null;
+    return masterSecret == null;
   }
 
-  public static synchronized @Nullable MasterSecret getMasterSecret(Context context) {
+  public static synchronized MasterSecret getMasterSecret(Context context) {
+    while (masterSecret == null) {
+      try {
+        KeyCachingService.class.wait();
+      } catch (InterruptedException e) {
+        Log.w(TAG, e);
+      }
+    }
     return masterSecret;
   }
 
@@ -92,11 +99,12 @@ public class KeyCachingService extends Service {
   public void setMasterSecret(final MasterSecret masterSecret) {
     synchronized (KeyCachingService.class) {
       KeyCachingService.masterSecret = masterSecret;
+      KeyCachingService.class.notifyAll();
 
       foregroundService();
       broadcastNewSecret();
       startTimeoutIfAppropriate();
-      
+
       new AsyncTask<Void, Void, Void>() {
         @Override
         protected Void doInBackground(Void... params) {
@@ -172,21 +180,23 @@ public class KeyCachingService extends Service {
   @SuppressLint("StaticFieldLeak")
   private void handleClearKey() {
     Log.w("KeyCachingService", "handleClearKey()");
-    KeyCachingService.masterSecret = null;
-    stopForeground(true);
+    synchronized (KeyCachingService.class) {
+      KeyCachingService.masterSecret = null;
+      stopForeground(true);
 
-    Intent intent = new Intent(CLEAR_KEY_EVENT);
-    intent.setPackage(getApplicationContext().getPackageName());
+      Intent intent = new Intent(CLEAR_KEY_EVENT);
+      intent.setPackage(getApplicationContext().getPackageName());
 
-    sendBroadcast(intent, KEY_PERMISSION);
+      sendBroadcast(intent, KEY_PERMISSION);
 
-    new AsyncTask<Void, Void, Void>() {
-      @Override
-      protected Void doInBackground(Void... params) {
-        MessageNotifier.updateNotification(KeyCachingService.this);
-        return null;
-      }
-    }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+      new AsyncTask<Void, Void, Void>() {
+        @Override
+        protected Void doInBackground(Void... params) {
+          MessageNotifier.clearNotifications(KeyCachingService.this, true);
+          return null;
+        }
+      }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
   }
 
   private void handleLockToggled() {

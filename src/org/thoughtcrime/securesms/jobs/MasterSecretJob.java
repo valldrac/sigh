@@ -28,10 +28,8 @@ public abstract class MasterSecretJob extends ContextJob {
   public abstract boolean onShouldRetryThrowable(Exception exception);
 
   private MasterSecret getMasterSecret() throws RequirementNotMetException {
-    MasterSecret masterSecret = KeyCachingService.getMasterSecret(context);
-
-    if (masterSecret == null) throw new RequirementNotMetException();
-    else                      return masterSecret;
+    if (KeyCachingService.isLocked(context)) throw new RequirementNotMetException();
+    return KeyCachingService.getMasterSecret(context);
   }
 
   protected static class RequirementNotMetException extends Exception {}

@@ -16,7 +16,7 @@ public class MasterSecretRequirement implements Requirement, ContextDependent {
 
   @Override
   public boolean isPresent() {
-    return KeyCachingService.getMasterSecret(context) != null;
+    return !KeyCachingService.isLocked(context);
   }
 
   @Override

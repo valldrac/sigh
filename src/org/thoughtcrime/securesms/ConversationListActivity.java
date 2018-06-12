@@ -18,6 +18,7 @@ package org.thoughtcrime.securesms;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -218,6 +219,10 @@ public class ConversationListActivity extends PassphraseRequiredActionBarActivit
   }
 
   private void handleClearPassphrase() {
+    ProgressDialog.show(this,"",
+                        getString(R.string.ConversationListActivity_signal_is_clearing_secrets),
+                        true, false);
+
     Intent intent = new Intent(this, KeyCachingService.class);
     intent.setAction(KeyCachingService.CLEAR_KEY_ACTION);
     startService(intent);

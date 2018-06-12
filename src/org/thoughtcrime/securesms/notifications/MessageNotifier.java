@@ -232,6 +232,16 @@ public class MessageNotifier {
     }
   }
 
+  public static void clearNotifications(@NonNull Context context,
+                                        boolean clearDelayed)
+  {
+    if (clearDelayed) cancelDelayedNotifications();
+
+    cancelActiveNotifications(context);
+    updateBadge(context, 0);
+    clearReminder(context);
+  }
+
   private static void updateNotification(@NonNull Context context,
                                          boolean signal,
                                          int     reminderCount)
@@ -246,9 +256,7 @@ public class MessageNotifier {
       if ((telcoCursor == null || telcoCursor.isAfterLast()) &&
           (pushCursor == null || pushCursor.isAfterLast()))
       {
-        cancelActiveNotifications(context);
-        updateBadge(context, 0);
-        clearReminder(context);
+        clearNotifications(context, false);
         return;
       }
 
