@@ -16,7 +16,6 @@
  */
 package org.thoughtcrime.securesms.jobqueue.persistence;
 
-import org.thoughtcrime.securesms.jobqueue.EncryptionKeys;
 import org.thoughtcrime.securesms.jobqueue.Job;
 
 import java.io.IOException;
@@ -36,12 +35,10 @@ public interface JobSerializer {
 
   /**
    * Deserialize a String into a Job.
-   * @param keys Optional encryption keys that could have been used.
-   * @param encrypted True if the job was encrypted using the encryption keys.
    * @param serialized The serialized Job.
    * @return The deserialized Job.
    * @throws IOException If the Job deserialization fails.
    */
-  public Job deserialize(EncryptionKeys keys, boolean encrypted, String serialized) throws IOException;
+  public Job deserialize(String serialized) throws IOException;
 
 }

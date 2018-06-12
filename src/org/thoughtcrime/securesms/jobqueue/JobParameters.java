@@ -28,8 +28,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class JobParameters implements Serializable {
 
-  private transient EncryptionKeys encryptionKeys;
-
   private final List<Requirement> requirements;
   private final boolean           isPersistent;
   private final int               retryCount;
@@ -39,14 +37,12 @@ public class JobParameters implements Serializable {
 
   private JobParameters(List<Requirement> requirements,
                        boolean isPersistent, String groupId,
-                       EncryptionKeys encryptionKeys,
                        int retryCount, boolean wakeLock,
                        long wakeLockTimeout)
   {
     this.requirements    = requirements;
     this.isPersistent    = isPersistent;
     this.groupId         = groupId;
-    this.encryptionKeys  = encryptionKeys;
     this.retryCount      = retryCount;
     this.wakeLock        = wakeLock;
     this.wakeLockTimeout = wakeLockTimeout;
@@ -58,14 +54,6 @@ public class JobParameters implements Serializable {
 
   public boolean isPersistent() {
     return isPersistent;
-  }
-
-  public EncryptionKeys getEncryptionKeys() {
-    return encryptionKeys;
-  }
-
-  public void setEncryptionKeys(EncryptionKeys encryptionKeys) {
-    this.encryptionKeys = encryptionKeys;
   }
 
   public int getRetryCount() {
@@ -94,7 +82,6 @@ public class JobParameters implements Serializable {
   public static class Builder {
     private List<Requirement> requirements    = new LinkedList<>();
     private boolean           isPersistent    = false;
-    private EncryptionKeys    encryptionKeys  = null;
     private int               retryCount      = 100;
     private String            groupId         = null;
     private boolean           wakeLock        = false;
@@ -118,16 +105,6 @@ public class JobParameters implements Serializable {
      */
     public Builder withPersistence() {
       this.isPersistent = true;
-      return this;
-    }
-
-    /**
-     * Specify that the job should use encryption when durably persisted to disk.
-     * @param encryptionKeys The keys to encrypt the serialized job with before persisting.
-     * @return the builder.
-     */
-    public Builder withEncryption(EncryptionKeys encryptionKeys) {
-      this.encryptionKeys = encryptionKeys;
       return this;
     }
 
@@ -184,7 +161,7 @@ public class JobParameters implements Serializable {
      * @return the JobParameters instance that describes a Job.
      */
     public JobParameters create() {
-      return new JobParameters(requirements, isPersistent, groupId, encryptionKeys, retryCount, wakeLock, wakeLockTimeout);
+      return new JobParameters(requirements, isPersistent, groupId, retryCount, wakeLock, wakeLockTimeout);
     }
   }
 }

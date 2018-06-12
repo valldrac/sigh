@@ -61,7 +61,7 @@ public class JobManager implements RequirementListener {
     this.persistentStorage    = new PersistentStorage(context, name, jobSerializer, this.dependencyInjector);
     this.requirementProviders = requirementProviders;
 
-    eventExecutor.execute(new LoadTask(null));
+    eventExecutor.execute(new LoadTask());
 
     if (requirementProviders != null && !requirementProviders.isEmpty()) {
       for (RequirementProvider provider : requirementProviders) {
@@ -80,12 +80,6 @@ public class JobManager implements RequirementListener {
    */
   public static Builder newBuilder(Context context) {
     return new Builder(context);
-  }
-
-  public void setEncryptionKeys(EncryptionKeys keys) {
-    if (hasLoadedEncrypted.compareAndSet(false, true)) {
-      eventExecutor.execute(new LoadTask(keys));
-    }
   }
 
   /**
@@ -140,20 +134,9 @@ public class JobManager implements RequirementListener {
 
   private class LoadTask implements Runnable {
 
-    private final EncryptionKeys keys;
-
-    public LoadTask(EncryptionKeys keys) {
-      this.keys = keys;
-    }
-
     @Override
     public void run() {
-      List<Job> pendingJobs;
-
-      if (keys == null) pendingJobs = persistentStorage.getAllUnencrypted();
-      else              pendingJobs = persistentStorage.getAllEncrypted(keys);
-
-      jobQueue.addAll(pendingJobs);
+      jobQueue.addAll(persistentStorage.getJobs());
     }
   }
 

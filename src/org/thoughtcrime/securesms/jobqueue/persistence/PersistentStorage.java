@@ -19,11 +19,14 @@ package org.thoughtcrime.securesms.jobqueue.persistence;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
+import android.support.annotation.NonNull;
 import android.util.Log;
 
-import org.thoughtcrime.securesms.jobqueue.EncryptionKeys;
+import net.sqlcipher.database.SQLiteDatabase;
+import net.sqlcipher.database.SQLiteOpenHelper;
+
+import org.thoughtcrime.securesms.crypto.DatabaseSecret;
+import org.thoughtcrime.securesms.crypto.DatabaseSecretProvider;
 import org.thoughtcrime.securesms.jobqueue.Job;
 import org.thoughtcrime.securesms.jobqueue.dependencies.AggregateDependencyInjector;
 
@@ -38,10 +41,9 @@ public class PersistentStorage {
   private static final String TABLE_NAME = "queue";
   private static final String ID         = "_id";
   private static final String ITEM       = "item";
-  private static final String ENCRYPTED  = "encrypted";
 
-  private static final String DATABASE_CREATE = String.format("CREATE TABLE %s (%s INTEGER PRIMARY KEY, %s TEXT NOT NULL, %s INTEGER DEFAULT 0);",
-                                                              TABLE_NAME, ID, ITEM, ENCRYPTED);
+  private static final String DATABASE_CREATE = String.format("CREATE TABLE %s (%s INTEGER PRIMARY KEY, %s TEXT NOT NULL);",
+                                                              TABLE_NAME, ID, ITEM);
 
   private final Context                     context;
   private final DatabaseHelper              databaseHelper;
@@ -52,7 +54,11 @@ public class PersistentStorage {
                            JobSerializer serializer,
                            AggregateDependencyInjector dependencyInjector)
   {
-    this.databaseHelper     = new DatabaseHelper(context, "_jobqueue-" + name);
+    SQLiteDatabase.loadLibs(context);
+
+    DatabaseSecret databaseSecret = new DatabaseSecretProvider(context).getOrCreateDatabaseSecret();
+
+    this.databaseHelper     = new DatabaseHelper(context, "_jobqueue-" + name, databaseSecret);
     this.context            = context;
     this.jobSerializer      = serializer;
     this.dependencyInjector = dependencyInjector;
@@ -61,38 +67,27 @@ public class PersistentStorage {
   public void store(Job job) throws IOException {
     ContentValues contentValues = new ContentValues();
     contentValues.put(ITEM, jobSerializer.serialize(job));
-    contentValues.put(ENCRYPTED, job.getEncryptionKeys() != null);
 
     long id = databaseHelper.getWritableDatabase().insert(TABLE_NAME, null, contentValues);
     job.setPersistentId(id);
   }
 
-  public List<Job> getAllUnencrypted() {
-    return getJobs(null, ENCRYPTED + " = 0");
-  }
-
-  public List<Job> getAllEncrypted(EncryptionKeys keys) {
-    return getJobs(keys, ENCRYPTED + " = 1");
-  }
-
-  private List<Job> getJobs(EncryptionKeys keys, String where) {
+  public List<Job> getJobs() {
     List<Job>      results  = new LinkedList<>();
     SQLiteDatabase database = databaseHelper.getReadableDatabase();
     Cursor         cursor   = null;
 
     try {
-      cursor = database.query(TABLE_NAME, null, where, null, null, null, ID + " ASC", null);
+      cursor = database.query(TABLE_NAME, null, null, null, null, null, ID + " ASC", null);
 
       while (cursor.moveToNext()) {
         long    id        = cursor.getLong(cursor.getColumnIndexOrThrow(ID));
         String  item      = cursor.getString(cursor.getColumnIndexOrThrow(ITEM));
-        boolean encrypted = cursor.getInt(cursor.getColumnIndexOrThrow(ENCRYPTED)) == 1;
 
         try{
-          Job job = jobSerializer.deserialize(keys, encrypted, item);
+          Job job = jobSerializer.deserialize(item);
 
           job.setPersistentId(id);
-          job.setEncryptionKeys(keys);
           dependencyInjector.injectDependencies(context, job);
 
           results.add(job);
@@ -116,8 +111,11 @@ public class PersistentStorage {
 
   private static class DatabaseHelper extends SQLiteOpenHelper {
 
-    public DatabaseHelper(Context context, String name) {
+    private final DatabaseSecret databaseSecret;
+
+    private DatabaseHelper(Context context, String name, @NonNull DatabaseSecret databaseSecret) {
       super(context, name, null, DATABASE_VERSION);
+      this.databaseSecret = databaseSecret;
     }
 
     @Override
@@ -128,6 +126,14 @@ public class PersistentStorage {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 
+    }
+
+    public SQLiteDatabase getReadableDatabase() {
+      return getReadableDatabase(databaseSecret.asString());
+    }
+
+    public SQLiteDatabase getWritableDatabase() {
+      return getWritableDatabase(databaseSecret.asString());
     }
   }
 

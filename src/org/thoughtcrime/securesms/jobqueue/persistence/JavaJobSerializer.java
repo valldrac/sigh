@@ -16,9 +16,8 @@
  */
 package org.thoughtcrime.securesms.jobqueue.persistence;
 
-import org.thoughtcrime.securesms.jobqueue.EncryptionKeys;
 import org.thoughtcrime.securesms.jobqueue.Job;
-import org.thoughtcrime.securesms.jobqueue.util.Base64;
+import org.thoughtcrime.securesms.util.Base64;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -31,9 +30,6 @@ import java.io.StringWriter;
 /**
  * An implementation of {@link org.thoughtcrime.securesms.jobqueue.persistence.JobSerializer} that uses
  * Java Serialization.
- *
- * NOTE: This {@link JobSerializer} does not support encryption. Jobs will be serialized normally,
- * but any corresponding {@link Job} encryption keys will be ignored.
  */
 public class JavaJobSerializer implements JobSerializer {
 
@@ -41,20 +37,13 @@ public class JavaJobSerializer implements JobSerializer {
 
   @Override
   public String serialize(Job job) throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    ObjectOutputStream    oos  = new ObjectOutputStream(baos);
-    oos.writeObject(job);
-
-    return Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
+    return Base64.encodeObject(job);
   }
 
   @Override
-  public Job deserialize(EncryptionKeys keys, boolean encrypted, String serialized) throws IOException {
+  public Job deserialize(String serialized) throws IOException {
     try {
-      ByteArrayInputStream bais = new ByteArrayInputStream(Base64.decode(serialized, Base64.NO_WRAP));
-      ObjectInputStream    ois  = new ObjectInputStream(bais);
-
-      return (Job)ois.readObject();
+      return (Job)Base64.decodeToObject(serialized);
     } catch (ClassNotFoundException e) {
       StringWriter sw = new StringWriter();
       PrintWriter  pw = new PrintWriter(sw);
