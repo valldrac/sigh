@@ -69,7 +69,7 @@
                       android:hint="@string/prompt_passphrase_activity__enter_passphrase"
                       android:singleLine="true"
                       android:paddingLeft="10dp"
-                      android:paddingRight="40dp"/>
+                      android:paddingRight="10dp"/>
 
             <ImageButton android:id="@+id/ok_button"
                          android:src="?ic_arrow_forward"
