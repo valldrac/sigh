@@ -23,7 +23,7 @@ import org.thoughtcrime.securesms.service.SmsDeliveryListener;
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException;
 import org.thoughtcrime.securesms.util.NumberUtil;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.whispersystems.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
 
 import java.util.ArrayList;
 

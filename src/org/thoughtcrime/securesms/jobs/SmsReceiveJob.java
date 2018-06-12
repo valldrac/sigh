@@ -15,7 +15,7 @@ import org.thoughtcrime.securesms.notifications.MessageNotifier;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.sms.IncomingTextMessage;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.whispersystems.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.util.LinkedList;

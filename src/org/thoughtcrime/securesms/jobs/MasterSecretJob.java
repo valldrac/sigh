@@ -4,7 +4,7 @@ import android.content.Context;
 
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.whispersystems.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
 
 public abstract class MasterSecretJob extends ContextJob {
 
@@ -28,8 +28,8 @@ public abstract class MasterSecretJob extends ContextJob {
   public abstract boolean onShouldRetryThrowable(Exception exception);
 
   private MasterSecret getMasterSecret() throws RequirementNotMetException {
-    if (KeyCachingService.isLocked(context)) throw new RequirementNotMetException();
-    return KeyCachingService.getMasterSecret(context);
+    if (KeyCachingService.isLocked()) throw new RequirementNotMetException();
+    return KeyCachingService.getMasterSecret();
   }
 
   protected static class RequirementNotMetException extends Exception {}

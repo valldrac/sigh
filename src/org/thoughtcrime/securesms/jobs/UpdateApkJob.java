@@ -20,8 +20,8 @@ import org.thoughtcrime.securesms.util.FileUtils;
 import org.thoughtcrime.securesms.util.Hex;
 import org.thoughtcrime.securesms.util.JsonUtils;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.whispersystems.jobqueue.JobParameters;
-import org.whispersystems.jobqueue.requirements.NetworkRequirement;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.requirements.NetworkRequirement;
 
 import java.io.FileInputStream;
 import java.io.IOException;

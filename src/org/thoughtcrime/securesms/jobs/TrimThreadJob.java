@@ -21,8 +21,8 @@ import android.util.Log;
 
 import org.thoughtcrime.securesms.database.DatabaseFactory;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.whispersystems.jobqueue.Job;
-import org.whispersystems.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.Job;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
 
 public class TrimThreadJob extends Job {
 

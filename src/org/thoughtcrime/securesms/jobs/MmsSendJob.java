@@ -41,8 +41,8 @@ import org.thoughtcrime.securesms.util.Hex;
 import org.thoughtcrime.securesms.util.NumberUtil;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.Util;
-import org.whispersystems.jobqueue.JobParameters;
-import org.whispersystems.jobqueue.requirements.NetworkRequirement;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.requirements.NetworkRequirement;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

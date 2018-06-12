@@ -10,8 +10,8 @@ import org.thoughtcrime.securesms.database.DatabaseFactory;
 import org.thoughtcrime.securesms.database.MessagingDatabase.SyncMessageId;
 import org.thoughtcrime.securesms.database.RecipientDatabase;
 import org.thoughtcrime.securesms.recipients.Recipient;
-import org.whispersystems.jobqueue.JobManager;
-import org.whispersystems.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.JobManager;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
 import org.whispersystems.signalservice.api.messages.SignalServiceEnvelope;
 
 public abstract class PushReceivedJob extends ContextJob {

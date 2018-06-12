@@ -31,8 +31,8 @@ import org.thoughtcrime.securesms.providers.SingleUseBlobProvider;
 import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.Util;
-import org.whispersystems.jobqueue.JobParameters;
-import org.whispersystems.jobqueue.requirements.NetworkRequirement;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.requirements.NetworkRequirement;
 import org.whispersystems.libsignal.DuplicateMessageException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.LegacyMessageException;
@@ -73,7 +73,7 @@ public class MmsDownloadJob extends MasterSecretJob {
 
   @Override
   public void onAdded() {
-    if (automatic && KeyCachingService.isLocked(context)) {
+    if (automatic && KeyCachingService.isLocked()) {
       DatabaseFactory.getMmsDatabase(context).markIncomingNotificationReceived(threadId);
       MessageNotifier.updateNotification(context);
     }

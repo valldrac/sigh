@@ -29,7 +29,6 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.RemoteViews;
@@ -80,11 +79,11 @@ public class KeyCachingService extends Service {
 
   public KeyCachingService() {}
 
-  public static synchronized boolean isLocked(Context context) {
+  public static synchronized boolean isLocked() {
     return masterSecret == null;
   }
 
-  public static synchronized MasterSecret getMasterSecret(Context context) {
+  public static synchronized MasterSecret getMasterSecret() {
     while (masterSecret == null) {
       try {
         KeyCachingService.class.wait();

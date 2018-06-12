@@ -43,7 +43,7 @@ import org.thoughtcrime.securesms.sms.IncomingTextMessage;
 import org.thoughtcrime.securesms.sms.OutgoingTextMessage;
 import org.thoughtcrime.securesms.util.JsonUtils;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.whispersystems.jobqueue.JobManager;
+import org.thoughtcrime.securesms.jobqueue.JobManager;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.io.IOException;

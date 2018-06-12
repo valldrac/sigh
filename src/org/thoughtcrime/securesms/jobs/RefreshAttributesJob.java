@@ -5,8 +5,8 @@ import android.util.Log;
 
 import org.thoughtcrime.securesms.dependencies.InjectableType;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.whispersystems.jobqueue.JobParameters;
-import org.whispersystems.jobqueue.requirements.NetworkRequirement;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.requirements.NetworkRequirement;
 import org.whispersystems.signalservice.api.SignalServiceAccountManager;
 import org.whispersystems.signalservice.api.push.exceptions.NetworkFailureException;
 

@@ -15,7 +15,7 @@ import org.thoughtcrime.securesms.mms.MmsException;
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException;
 import org.thoughtcrime.securesms.util.MediaUtil;
 import org.thoughtcrime.securesms.util.Util;
-import org.whispersystems.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
 
 import java.io.IOException;
 import java.util.LinkedList;

@@ -32,7 +32,7 @@ public class QuickResponseService extends IntentService {
       return;
     }
 
-    if (KeyCachingService.isLocked(this)) {
+    if (KeyCachingService.isLocked()) {
       Log.w(TAG, "Got quick response request when locked...");
       Toast.makeText(this, R.string.QuickResponseService_quick_response_unavailable_when_Signal_is_locked, Toast.LENGTH_LONG).show();
       return;

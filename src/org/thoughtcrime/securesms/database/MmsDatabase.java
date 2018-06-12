@@ -64,7 +64,7 @@ import org.thoughtcrime.securesms.recipients.RecipientFormattingException;
 import org.thoughtcrime.securesms.util.JsonUtils;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.Util;
-import org.whispersystems.jobqueue.JobManager;
+import org.thoughtcrime.securesms.jobqueue.JobManager;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.io.IOException;

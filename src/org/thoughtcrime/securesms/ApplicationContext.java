@@ -45,10 +45,10 @@ import org.webrtc.PeerConnectionFactory;
 import org.webrtc.PeerConnectionFactory.InitializationOptions;
 import org.webrtc.voiceengine.WebRtcAudioManager;
 import org.webrtc.voiceengine.WebRtcAudioUtils;
-import org.whispersystems.jobqueue.JobManager;
-import org.whispersystems.jobqueue.dependencies.DependencyInjector;
-import org.whispersystems.jobqueue.persistence.JavaJobSerializer;
-import org.whispersystems.jobqueue.requirements.NetworkRequirementProvider;
+import org.thoughtcrime.securesms.jobqueue.JobManager;
+import org.thoughtcrime.securesms.jobqueue.dependencies.DependencyInjector;
+import org.thoughtcrime.securesms.jobqueue.persistence.JavaJobSerializer;
+import org.thoughtcrime.securesms.jobqueue.requirements.NetworkRequirementProvider;
 import org.whispersystems.libsignal.logging.SignalProtocolLoggerProvider;
 import org.whispersystems.libsignal.util.AndroidSignalProtocolLogger;
 

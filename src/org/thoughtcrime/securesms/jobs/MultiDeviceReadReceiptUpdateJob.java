@@ -5,8 +5,8 @@ import android.content.Context;
 import android.util.Log;
 
 import org.thoughtcrime.securesms.dependencies.InjectableType;
-import org.whispersystems.jobqueue.JobParameters;
-import org.whispersystems.jobqueue.requirements.NetworkRequirement;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.requirements.NetworkRequirement;
 import org.whispersystems.libsignal.util.guava.Optional;
 import org.whispersystems.signalservice.api.SignalServiceMessageSender;
 import org.whispersystems.signalservice.api.crypto.UntrustedIdentityException;

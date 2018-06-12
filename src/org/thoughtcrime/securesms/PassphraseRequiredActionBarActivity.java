@@ -45,7 +45,7 @@ public abstract class PassphraseRequiredActionBarActivity extends BaseActionBarA
     this.networkAccess = new SignalServiceNetworkAccess(this);
     onPreCreate();
 
-    final boolean locked = KeyCachingService.isLocked(this);
+    final boolean locked = KeyCachingService.isLocked();
     routeApplicationState(locked);
 
     super.onCreate(savedInstanceState);

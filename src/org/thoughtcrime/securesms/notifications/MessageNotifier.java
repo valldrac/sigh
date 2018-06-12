@@ -438,7 +438,7 @@ public class MessageNotifier {
         threadRecipients = DatabaseFactory.getThreadDatabase(context).getRecipientForThreadId(threadId);
       }
 
-      if (KeyCachingService.isLocked(context)) {
+      if (KeyCachingService.isLocked()) {
         body = SpanUtil.italic(context.getString(R.string.MessageNotifier_locked_message));
       } else if (record.isMms() && !((MmsMessageRecord) record).getSharedContacts().isEmpty()) {
         Contact contact     = ((MmsMessageRecord) record).getSharedContacts().get(0);

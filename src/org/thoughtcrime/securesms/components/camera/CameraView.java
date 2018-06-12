@@ -46,8 +46,8 @@ import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.util.BitmapUtil;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.Util;
-import org.whispersystems.jobqueue.Job;
-import org.whispersystems.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobqueue.Job;
+import org.thoughtcrime.securesms.jobqueue.JobParameters;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 @SuppressWarnings("deprecation")

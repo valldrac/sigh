@@ -10,8 +10,8 @@ import android.util.Log;
 
 import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.sms.TelephonyServiceState;
-import org.whispersystems.jobqueue.dependencies.ContextDependent;
-import org.whispersystems.jobqueue.requirements.Requirement;
+import org.thoughtcrime.securesms.jobqueue.dependencies.ContextDependent;
+import org.thoughtcrime.securesms.jobqueue.requirements.Requirement;
 
 public class ServiceRequirement implements Requirement, ContextDependent {
 

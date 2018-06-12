@@ -9,7 +9,7 @@ import android.util.Log;
 import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.jobs.SmsSentJob;
-import org.whispersystems.jobqueue.JobManager;
+import org.thoughtcrime.securesms.jobqueue.JobManager;
 
 public class SmsDeliveryListener extends BroadcastReceiver {
 

@@ -31,9 +31,7 @@ import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.database.ThreadDatabase;
 import org.thoughtcrime.securesms.jobs.RefreshPreKeysJob;
 import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.thoughtcrime.securesms.util.Hex;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.thoughtcrime.securesms.util.Util;
 
 import java.io.File;
 
@@ -109,7 +107,7 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
 
       SQLCipherMigrationHelper.migratePlaintext(context, legacyDb, db);
 
-      MasterSecret masterSecret = KeyCachingService.getMasterSecret(context);
+      MasterSecret masterSecret = KeyCachingService.getMasterSecret();
 
       if (masterSecret != null) SQLCipherMigrationHelper.migrateCiphertext(context, masterSecret, legacyDb, db, null);
       else                      TextSecurePreferences.setNeedsSqlCipherMigration(context, true);
@@ -223,17 +221,11 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
   }
 
   public SQLiteDatabase getReadableDatabase() {
-    return getReadableDatabase(getDatabasePassword());
+    return getReadableDatabase(databaseSecret.asString());
   }
 
   public SQLiteDatabase getWritableDatabase() {
-    return getWritableDatabase(getDatabasePassword());
-  }
-
-  private String getDatabasePassword() {
-    MasterSecret masterSecret = KeyCachingService.getMasterSecret(context);
-    return Hex.toStringCondensed(Util.combine(databaseSecret.asBytes(),
-                                              masterSecret.getEncryptionKey().getEncoded()));
+    return getWritableDatabase(databaseSecret.asString());
   }
 
   public void markCurrent(SQLiteDatabase db) {

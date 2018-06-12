@@ -5,8 +5,8 @@ import android.content.Context;
 import android.support.annotation.NonNull;
 
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.whispersystems.jobqueue.dependencies.ContextDependent;
-import org.whispersystems.jobqueue.requirements.Requirement;
+import org.thoughtcrime.securesms.jobqueue.dependencies.ContextDependent;
+import org.thoughtcrime.securesms.jobqueue.requirements.Requirement;
 
 public class SqlCipherMigrationRequirement implements Requirement, ContextDependent {
 
