@@ -128,7 +128,7 @@ public class PassphraseCreateActivity extends PassphraseActivity {
 
       if (masterSecret != null) {
         MasterSecretUtil.generateAsymmetricMasterSecret(context, masterSecret);
-        IdentityKeyUtil.generateIdentityKeys(context);
+        IdentityKeyUtil.generateIdentityKeys(context, masterSecret);
         VersionTracker.updateLastSeenVersion(context);
 
         TextSecurePreferences.setLastExperienceVersionCode(context, Util.getCurrentApkReleaseVersion(context));

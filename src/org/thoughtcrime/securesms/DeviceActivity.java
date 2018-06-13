@@ -18,10 +18,12 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import org.thoughtcrime.securesms.crypto.IdentityKeyUtil;
+import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.crypto.ProfileKeyUtil;
 import org.thoughtcrime.securesms.permissions.Permissions;
 import org.thoughtcrime.securesms.push.AccountManagerFactory;
 import org.thoughtcrime.securesms.qr.ScanListener;
+import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.Base64;
 import org.thoughtcrime.securesms.util.DynamicLanguage;
 import org.thoughtcrime.securesms.util.DynamicTheme;
@@ -164,6 +166,7 @@ public class DeviceActivity extends PassphraseRequiredActionBarActivity
 
         try {
           Context                     context          = DeviceActivity.this;
+          MasterSecret                masterSecret     = KeyCachingService.getMasterSecret();
           SignalServiceAccountManager accountManager   = AccountManagerFactory.createManager(context);
           String                      verificationCode = accountManager.getNewDeviceVerificationCode();
           String                      ephemeralId      = uri.getQueryParameter("uuid");
@@ -175,7 +178,7 @@ public class DeviceActivity extends PassphraseRequiredActionBarActivity
           }
 
           ECPublicKey      publicKey         = Curve.decodePoint(Base64.decode(publicKeyEncoded), 0);
-          IdentityKeyPair  identityKeyPair   = IdentityKeyUtil.getIdentityKeyPair(context);
+          IdentityKeyPair  identityKeyPair   = IdentityKeyUtil.getIdentityKeyPair(context, masterSecret);
           Optional<byte[]> profileKey        = Optional.of(ProfileKeyUtil.getProfileKey(getContext()));
 
           TextSecurePreferences.setMultiDevice(DeviceActivity.this, true);

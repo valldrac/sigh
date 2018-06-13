@@ -43,7 +43,7 @@ public class RotateSignedPreKeyJob extends MasterSecretJob implements Injectable
   public void onRun(MasterSecret masterSecret) throws Exception {
     Log.w(TAG, "Rotating signed prekey...");
 
-    IdentityKeyPair    identityKey        = IdentityKeyUtil.getIdentityKeyPair(context);
+    IdentityKeyPair    identityKey        = IdentityKeyUtil.getIdentityKeyPair(context, masterSecret);
     SignedPreKeyRecord signedPreKeyRecord = PreKeyUtil.generateSignedPreKey(context, identityKey, false);
 
     accountManager.setSignedPreKey(signedPreKeyRecord);

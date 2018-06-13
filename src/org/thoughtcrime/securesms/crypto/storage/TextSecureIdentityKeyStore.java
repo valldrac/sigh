@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import org.thoughtcrime.securesms.crypto.IdentityKeyUtil;
+import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.crypto.SessionUtil;
 import org.thoughtcrime.securesms.database.Address;
 import org.thoughtcrime.securesms.database.DatabaseFactory;
@@ -11,6 +12,7 @@ import org.thoughtcrime.securesms.database.IdentityDatabase;
 import org.thoughtcrime.securesms.database.IdentityDatabase.IdentityRecord;
 import org.thoughtcrime.securesms.database.IdentityDatabase.VerifiedStatus;
 import org.thoughtcrime.securesms.recipients.Recipient;
+import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.IdentityUtil;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.whispersystems.libsignal.IdentityKey;
@@ -36,7 +38,7 @@ public class TextSecureIdentityKeyStore implements IdentityKeyStore {
 
   @Override
   public IdentityKeyPair getIdentityKeyPair() {
-    return IdentityKeyUtil.getIdentityKeyPair(context);
+    return IdentityKeyUtil.getIdentityKeyPair(context, KeyCachingService.getMasterSecret());
   }
 
   @Override
@@ -97,7 +99,7 @@ public class TextSecureIdentityKeyStore implements IdentityKeyStore {
       Address          theirAddress     = Address.fromExternal(context, address.getName());
 
       if (ourNumber.equals(address.getName()) || Address.fromSerialized(ourNumber).equals(theirAddress)) {
-        return identityKey.equals(IdentityKeyUtil.getIdentityKey(context));
+        return identityKey.equals(IdentityKeyUtil.getIdentityKey(context, KeyCachingService.getMasterSecret()));
       }
 
       switch (direction) {

@@ -25,6 +25,7 @@ import org.thoughtcrime.securesms.util.Hex;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
+import org.whispersystems.libsignal.ecc.ECPublicKey;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -61,19 +62,33 @@ public class MasterCipher {
     this.masterSecret = masterSecret;
   }
 
-  public byte[] encryptKey(ECPrivateKey privateKey) {
+  public byte[] encryptPublicKey(ECPublicKey publicKey) {
+    return encryptBytes(publicKey.serialize());
+  }
+
+  public byte[] encryptPrivateKey(ECPrivateKey privateKey) {
     return encryptBytes(privateKey.serialize());
   }
 
-  public String encryptBody(@NonNull  String body)  {
+  public String encryptBody(@NonNull String body)  {
     return encryptAndEncodeBytes(body.getBytes());
   }
 	
   public String decryptBody(String body) throws InvalidMessageException {
     return new String(decodeAndDecryptBytes(body));
   }
-	
-  public ECPrivateKey decryptKey(byte[] key)
+
+  public ECPublicKey decryptPublicKey(byte[] key)
+      throws org.whispersystems.libsignal.InvalidKeyException
+  {
+    try {
+      return Curve.decodePoint(decryptBytes(key), 0);
+    } catch (InvalidMessageException ime) {
+      throw new org.whispersystems.libsignal.InvalidKeyException(ime);
+    }
+  }
+
+  public ECPrivateKey decryptPrivateKey(byte[] key)
       throws org.whispersystems.libsignal.InvalidKeyException
   {
     try {
@@ -82,7 +97,7 @@ public class MasterCipher {
       throw new org.whispersystems.libsignal.InvalidKeyException(ime);
     }
   }
-	
+
   public byte[] decryptBytes(@NonNull byte[] decodedBody) throws InvalidMessageException {
     try {
       Mac mac              = getMac(masterSecret.getMacKey());
