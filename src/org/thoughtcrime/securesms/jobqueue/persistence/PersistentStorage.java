@@ -19,16 +19,14 @@ package org.thoughtcrime.securesms.jobqueue.persistence;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.support.annotation.NonNull;
 import android.util.Log;
 
 import net.sqlcipher.database.SQLiteDatabase;
 import net.sqlcipher.database.SQLiteOpenHelper;
 
-import org.thoughtcrime.securesms.crypto.DatabaseSecret;
-import org.thoughtcrime.securesms.crypto.DatabaseSecretProvider;
 import org.thoughtcrime.securesms.jobqueue.Job;
 import org.thoughtcrime.securesms.jobqueue.dependencies.AggregateDependencyInjector;
+import org.thoughtcrime.securesms.service.KeyCachingService;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -56,9 +54,7 @@ public class PersistentStorage {
   {
     SQLiteDatabase.loadLibs(context);
 
-    DatabaseSecret databaseSecret = new DatabaseSecretProvider(context).getOrCreateDatabaseSecret();
-
-    this.databaseHelper     = new DatabaseHelper(context, "_jobqueue-" + name, databaseSecret);
+    this.databaseHelper     = new DatabaseHelper(context, "_jobqueue-" + name);
     this.context            = context;
     this.jobSerializer      = serializer;
     this.dependencyInjector = dependencyInjector;
@@ -111,11 +107,8 @@ public class PersistentStorage {
 
   private static class DatabaseHelper extends SQLiteOpenHelper {
 
-    private final DatabaseSecret databaseSecret;
-
-    private DatabaseHelper(Context context, String name, @NonNull DatabaseSecret databaseSecret) {
+    private DatabaseHelper(Context context, String name) {
       super(context, name, null, DATABASE_VERSION);
-      this.databaseSecret = databaseSecret;
     }
 
     @Override
@@ -129,11 +122,11 @@ public class PersistentStorage {
     }
 
     public SQLiteDatabase getReadableDatabase() {
-      return getReadableDatabase(databaseSecret.asString());
+      return getReadableDatabase(KeyCachingService.getMasterSecret().toString());
     }
 
     public SQLiteDatabase getWritableDatabase() {
-      return getWritableDatabase(databaseSecret.asString());
+      return getWritableDatabase(KeyCachingService.getMasterSecret().toString());
     }
   }
 

@@ -25,8 +25,6 @@ import org.thoughtcrime.securesms.DatabaseUpgradeActivity;
 import org.thoughtcrime.securesms.contacts.ContactsDatabase;
 import org.thoughtcrime.securesms.crypto.AttachmentSecret;
 import org.thoughtcrime.securesms.crypto.AttachmentSecretProvider;
-import org.thoughtcrime.securesms.crypto.DatabaseSecret;
-import org.thoughtcrime.securesms.crypto.DatabaseSecretProvider;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.database.helpers.ClassicOpenHelper;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherMigrationHelper;
@@ -147,10 +145,9 @@ public class DatabaseFactory {
   private DatabaseFactory(@NonNull Context context) {
     SQLiteDatabase.loadLibs(context);
 
-    DatabaseSecret      databaseSecret   = new DatabaseSecretProvider(context).getOrCreateDatabaseSecret();
     AttachmentSecret    attachmentSecret = AttachmentSecretProvider.getInstance(context).getOrCreateAttachmentSecret();
 
-    this.databaseHelper       = new SQLCipherOpenHelper(context, databaseSecret);
+    this.databaseHelper       = new SQLCipherOpenHelper(context);
     this.sms                  = new SmsDatabase(context, databaseHelper);
     this.mms                  = new MmsDatabase(context, databaseHelper);
     this.attachments          = new AttachmentDatabase(context, databaseHelper, attachmentSecret);

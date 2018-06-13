@@ -13,7 +13,6 @@ import net.sqlcipher.database.SQLiteDatabaseHook;
 import net.sqlcipher.database.SQLiteOpenHelper;
 
 import org.thoughtcrime.securesms.ApplicationContext;
-import org.thoughtcrime.securesms.crypto.DatabaseSecret;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.database.AttachmentDatabase;
 import org.thoughtcrime.securesms.database.DraftDatabase;
@@ -53,9 +52,8 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
   private static final String DATABASE_NAME    = "signal.db";
 
   private final Context        context;
-  private final DatabaseSecret databaseSecret;
 
-  public SQLCipherOpenHelper(@NonNull Context context, @NonNull DatabaseSecret databaseSecret) {
+  public SQLCipherOpenHelper(@NonNull Context context) {
     super(context, DATABASE_NAME, null, DATABASE_VERSION, new SQLiteDatabaseHook() {
       @Override
       public void preKey(SQLiteDatabase db) {
@@ -71,7 +69,6 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
     });
 
     this.context        = context.getApplicationContext();
-    this.databaseSecret = databaseSecret;
   }
 
   @Override
@@ -221,11 +218,11 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
   }
 
   public SQLiteDatabase getReadableDatabase() {
-    return getReadableDatabase(databaseSecret.asString());
+    return getReadableDatabase(KeyCachingService.getMasterSecret().toString());
   }
 
   public SQLiteDatabase getWritableDatabase() {
-    return getWritableDatabase(databaseSecret.asString());
+    return getWritableDatabase(KeyCachingService.getMasterSecret().toString());
   }
 
   public void markCurrent(SQLiteDatabase db) {
