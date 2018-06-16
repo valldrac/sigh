@@ -48,7 +48,7 @@ import javax.crypto.spec.SecretKeySpec;
  * 
  * 1) 16 byte random IV.
  * 2) AES-CBC(plaintext)
- * 3) HMAC-SHA1 of 1 and 2
+ * 3) HMAC-SHA256 of 1 and 2
  * 
  * @author Moxie Marlinspike
  */
@@ -56,19 +56,9 @@ import javax.crypto.spec.SecretKeySpec;
 public class MasterCipher {
 
   private final MasterSecret masterSecret;
-  private final Cipher encryptingCipher;
-  private final Cipher decryptingCipher;
-  private final Mac hmac;
 	
   public MasterCipher(MasterSecret masterSecret) {
-    try {
-      this.masterSecret = masterSecret;		
-      this.encryptingCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-      this.decryptingCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-      this.hmac             = Mac.getInstance("HmacSHA1");
-    } catch (NoSuchPaddingException | NoSuchAlgorithmException nspe) {
-      throw new AssertionError(nspe);
-    }
+    this.masterSecret = masterSecret;
   }
 
   public byte[] encryptKey(ECPrivateKey privateKey) {
@@ -189,7 +179,7 @@ public class MasterCipher {
   }
 	
   private Mac getMac(SecretKeySpec key) throws NoSuchAlgorithmException, InvalidKeyException {
-    //		Mac hmac = Mac.getInstance("HmacSHA1");
+    Mac hmac = Mac.getInstance("HmacSHA256");
     hmac.init(key);
 
     return hmac;
@@ -206,18 +196,18 @@ public class MasterCipher {
   }
 	
   private Cipher getDecryptingCipher(SecretKeySpec key, byte[] encryptedBody) throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException {
-    //		Cipher cipher      = Cipher.getInstance("AES/CBC/PKCS5Padding");
-    IvParameterSpec iv = new IvParameterSpec(encryptedBody, 0, decryptingCipher.getBlockSize());
-    decryptingCipher.init(Cipher.DECRYPT_MODE, key, iv);
+    Cipher cipher      = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    IvParameterSpec iv = new IvParameterSpec(encryptedBody, 0, cipher.getBlockSize());
+    cipher.init(Cipher.DECRYPT_MODE, key, iv);
 		
-    return decryptingCipher;
+    return cipher;
   }
 	
   private Cipher getEncryptingCipher(SecretKeySpec key) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
-    //		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-    encryptingCipher.init(Cipher.ENCRYPT_MODE, key);
+    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    cipher.init(Cipher.ENCRYPT_MODE, key);
 		
-    return encryptingCipher;
+    return cipher;
   }
 	
 }
