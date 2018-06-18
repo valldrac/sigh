@@ -19,6 +19,7 @@ import org.thoughtcrime.securesms.database.DraftDatabase;
 import org.thoughtcrime.securesms.database.GroupDatabase;
 import org.thoughtcrime.securesms.database.GroupReceiptDatabase;
 import org.thoughtcrime.securesms.database.IdentityDatabase;
+import org.thoughtcrime.securesms.database.JobQueueDatabase;
 import org.thoughtcrime.securesms.database.MmsDatabase;
 import org.thoughtcrime.securesms.database.OneTimePreKeyDatabase;
 import org.thoughtcrime.securesms.database.PushDatabase;
@@ -30,6 +31,7 @@ import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.database.ThreadDatabase;
 import org.thoughtcrime.securesms.jobs.RefreshPreKeysJob;
 import org.thoughtcrime.securesms.service.KeyCachingService;
+import org.thoughtcrime.securesms.util.Base64;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 
 import java.io.File;
@@ -89,6 +91,7 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
     for (String sql : SearchDatabase.CREATE_TABLE) {
       db.execSQL(sql);
     }
+    db.execSQL(JobQueueDatabase.CREATE_TABLE);
 
     executeStatements(db, SmsDatabase.CREATE_INDEXS);
     executeStatements(db, MmsDatabase.CREATE_INDEXS);
@@ -218,11 +221,16 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
   }
 
   public SQLiteDatabase getReadableDatabase() {
-    return getReadableDatabase(KeyCachingService.getMasterSecret().toString());
+    return getReadableDatabase(getDatabasePassphrase());
   }
 
   public SQLiteDatabase getWritableDatabase() {
-    return getWritableDatabase(KeyCachingService.getMasterSecret().toString());
+    return getWritableDatabase(getDatabasePassphrase());
+  }
+
+  private String getDatabasePassphrase() {
+    MasterSecret masterSecret = KeyCachingService.getMasterSecret();
+    return Base64.encodeBytes(masterSecret.getEncryptionKey().getEncoded());
   }
 
   public void markCurrent(SQLiteDatabase db) {

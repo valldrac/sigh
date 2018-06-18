@@ -16,17 +16,13 @@
  */
 package org.thoughtcrime.securesms.jobqueue.persistence;
 
-import android.content.ContentValues;
 import android.content.Context;
-import android.database.Cursor;
 import android.util.Log;
+import android.util.Pair;
 
-import net.sqlcipher.database.SQLiteDatabase;
-import net.sqlcipher.database.SQLiteOpenHelper;
-
+import org.thoughtcrime.securesms.database.DatabaseFactory;
 import org.thoughtcrime.securesms.jobqueue.Job;
 import org.thoughtcrime.securesms.jobqueue.dependencies.AggregateDependencyInjector;
-import org.thoughtcrime.securesms.service.KeyCachingService;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -34,100 +30,49 @@ import java.util.List;
 
 public class PersistentStorage {
 
-  private static final int DATABASE_VERSION = 1;
-
-  private static final String TABLE_NAME = "queue";
-  private static final String ID         = "_id";
-  private static final String ITEM       = "item";
-
-  private static final String DATABASE_CREATE = String.format("CREATE TABLE %s (%s INTEGER PRIMARY KEY, %s TEXT NOT NULL);",
-                                                              TABLE_NAME, ID, ITEM);
-
   private final Context                     context;
-  private final DatabaseHelper              databaseHelper;
   private final JobSerializer               jobSerializer;
   private final AggregateDependencyInjector dependencyInjector;
 
-  public PersistentStorage(Context context, String name,
+  public PersistentStorage(Context context,
                            JobSerializer serializer,
                            AggregateDependencyInjector dependencyInjector)
   {
-    SQLiteDatabase.loadLibs(context);
-
-    this.databaseHelper     = new DatabaseHelper(context, "_jobqueue-" + name);
     this.context            = context;
     this.jobSerializer      = serializer;
     this.dependencyInjector = dependencyInjector;
   }
 
   public void store(Job job) throws IOException {
-    ContentValues contentValues = new ContentValues();
-    contentValues.put(ITEM, jobSerializer.serialize(job));
-
-    long id = databaseHelper.getWritableDatabase().insert(TABLE_NAME, null, contentValues);
+    String item = jobSerializer.serialize(job);
+    long   id   = DatabaseFactory.getJobQueueDatabase(context).store(item);
     job.setPersistentId(id);
   }
 
   public List<Job> getJobs() {
-    List<Job>      results  = new LinkedList<>();
-    SQLiteDatabase database = databaseHelper.getReadableDatabase();
-    Cursor         cursor   = null;
+    List<Job> results = new LinkedList<>();
 
-    try {
-      cursor = database.query(TABLE_NAME, null, null, null, null, null, ID + " ASC", null);
+    List<Pair<Long, String>> jobs = DatabaseFactory.getJobQueueDatabase(context).getJobs();
 
-      while (cursor.moveToNext()) {
-        long    id        = cursor.getLong(cursor.getColumnIndexOrThrow(ID));
-        String  item      = cursor.getString(cursor.getColumnIndexOrThrow(ITEM));
+    for (Pair<Long, String> idItem : jobs) {
+      try {
+        Job job = jobSerializer.deserialize(idItem.second);
 
-        try{
-          Job job = jobSerializer.deserialize(item);
+        job.setPersistentId(idItem.first);
+        dependencyInjector.injectDependencies(context, job);
 
-          job.setPersistentId(id);
-          dependencyInjector.injectDependencies(context, job);
-
-          results.add(job);
-        } catch (IOException e) {
+        results.add(job);
+      } catch (IOException e) {
           Log.w("PersistentStore", e);
-          remove(id);
-        }
+          remove(idItem.first);
       }
-    } finally {
-      if (cursor != null)
-        cursor.close();
     }
 
     return results;
   }
 
   public void remove(long id) {
-    databaseHelper.getWritableDatabase()
-                  .delete(TABLE_NAME, ID + " = ?", new String[] {String.valueOf(id)});
-  }
-
-  private static class DatabaseHelper extends SQLiteOpenHelper {
-
-    private DatabaseHelper(Context context, String name) {
-      super(context, name, null, DATABASE_VERSION);
-    }
-
-    @Override
-    public void onCreate(SQLiteDatabase db) {
-      db.execSQL(DATABASE_CREATE);
-    }
-
-    @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
-    }
-
-    public SQLiteDatabase getReadableDatabase() {
-      return getReadableDatabase(KeyCachingService.getMasterSecret().toString());
-    }
-
-    public SQLiteDatabase getWritableDatabase() {
-      return getWritableDatabase(KeyCachingService.getMasterSecret().toString());
-    }
+    DatabaseFactory.getJobQueueDatabase(context).remove(id);
   }
 
 }

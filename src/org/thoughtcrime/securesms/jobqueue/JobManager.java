@@ -51,14 +51,14 @@ public class JobManager implements RequirementListener {
   private final List<RequirementProvider>   requirementProviders;
   private final AggregateDependencyInjector dependencyInjector;
 
-  private JobManager(Context context, String name,
+  private JobManager(Context context,
                      List<RequirementProvider> requirementProviders,
                      DependencyInjector dependencyInjector,
                      JobSerializer jobSerializer, int consumers)
   {
     this.context              = context;
     this.dependencyInjector   = new AggregateDependencyInjector(dependencyInjector);
-    this.persistentStorage    = new PersistentStorage(context, name, jobSerializer, this.dependencyInjector);
+    this.persistentStorage    = new PersistentStorage(context, jobSerializer, this.dependencyInjector);
     this.requirementProviders = requirementProviders;
 
     eventExecutor.execute(new LoadTask());
@@ -142,7 +142,6 @@ public class JobManager implements RequirementListener {
 
   public static class Builder {
     private final Context                   context;
-    private       String                    name;
     private       List<RequirementProvider> requirementProviders;
     private       DependencyInjector        dependencyInjector;
     private       JobSerializer             jobSerializer;
@@ -151,18 +150,6 @@ public class JobManager implements RequirementListener {
     Builder(Context context) {
       this.context         = context;
       this.consumerThreads = 5;
-    }
-
-    /**
-     * A name for the {@link org.thoughtcrime.securesms.jobqueue.JobManager}. This is a required parameter,
-     * and is linked to the durable queue used by persistent jobs.
-     *
-     * @param name The name for the JobManager to build.
-     * @return The builder.
-     */
-    public Builder withName(String name) {
-      this.name = name;
-      return this;
     }
 
     /**
@@ -218,15 +205,11 @@ public class JobManager implements RequirementListener {
      * @return A constructed JobManager.
      */
     public JobManager build() {
-      if (name == null) {
-        throw new IllegalArgumentException("You must specify a name!");
-      }
-
       if (requirementProviders == null) {
         requirementProviders = new LinkedList<>();
       }
 
-      return new JobManager(context, name, requirementProviders,
+      return new JobManager(context, requirementProviders,
                             dependencyInjector, jobSerializer,
                             consumerThreads);
     }
