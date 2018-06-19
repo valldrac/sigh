@@ -5,7 +5,7 @@
 
         <org.thoughtcrime.securesms.components.SwitchPreferenceCompat
                 android:key="pref_android_screen_lock"
-                android:defaultValue="false"
+                android:defaultValue="true"
                 android:title="@string/preferences_app_protection__screen_lock"
                 android:summary="@string/preferences__auto_lock_signal_after_a_specified_time_interval_of_inactivity"/>
 

@@ -153,11 +153,9 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
     final String onRes               = context.getString(R.string.ApplicationPreferencesActivity_on);
     final String offRes              = context.getString(R.string.ApplicationPreferencesActivity_off);
 
-    if (TextSecurePreferences.isRegistrationtLockEnabled(context)) {
-      return context.getString(privacySummaryResId, onRes, onRes);
-    } else {
-      return context.getString(privacySummaryResId, onRes, offRes);
-    }
+    return context.getString(privacySummaryResId,
+                             TextSecurePreferences.isScreenLockEnabled(context) ? onRes : offRes,
+                             TextSecurePreferences.isRegistrationtLockEnabled(context) ? onRes : offRes);
   }
 
   // Derecated
