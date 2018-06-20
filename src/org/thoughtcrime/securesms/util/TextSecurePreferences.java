@@ -301,7 +301,7 @@ public class TextSecurePreferences {
   }
 
   public static boolean isIncognitoKeyboardEnabled(Context context) {
-    return getBooleanPreference(context, INCOGNITO_KEYBORAD_PREF, false);
+    return getBooleanPreference(context, INCOGNITO_KEYBORAD_PREF, true);
   }
 
   public static boolean isReadReceiptsEnabled(Context context) {
@@ -390,7 +390,7 @@ public class TextSecurePreferences {
   }
 
   public static NotificationPrivacyPreference getNotificationPrivacy(Context context) {
-    return new NotificationPrivacyPreference(getStringPreference(context, NOTIFICATION_PRIVACY_PREF, "all"));
+    return new NotificationPrivacyPreference(getStringPreference(context, NOTIFICATION_PRIVACY_PREF, "none"));
   }
 
   public static boolean isNewContactsNotificationEnabled(Context context) {
@@ -666,7 +666,7 @@ public class TextSecurePreferences {
   }
 
   public static boolean isScreenSecurityEnabled(Context context) {
-    return getBooleanPreference(context, SCREEN_SECURITY_PREF, false);
+    return getBooleanPreference(context, SCREEN_SECURITY_PREF, true);
   }
 
   public static boolean isLegacyUseLocalApnsEnabled(Context context) {
