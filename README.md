@@ -11,7 +11,7 @@ Some time ago, Signal supported user passphrase for securing data on disk indepe
 * Screen is locked with **user passphrase**.
 * **Database**, identity keys and persistent jobs are **encrypted** with the master secret.
 * **Master secret** is encrypted and authenticated with user passphrase.
-* Application is **auto-locked** after 15 minutes of inactivity. Because clearing secrets from memory is hard in Android it **kills and respawn** the underlying process on lock. It is expected that RAM-hungry apps will overwrite freed memory.
+* The app is **auto-locked** after 15 minutes of inactivity. Because clearing secrets from memory is hard in Android, the underlying JVM process is **killed and respawned** on lock. It is expected that other processes will overwrite that freed memory in a short time.
 * Local encryption is upgraded to **AES-256** and **SHA-256**.
 * **Privacy settings** are enabled by default.
 
