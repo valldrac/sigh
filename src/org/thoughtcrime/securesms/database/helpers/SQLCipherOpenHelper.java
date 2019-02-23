@@ -228,9 +228,14 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
     return getWritableDatabase(getDatabasePassphrase());
   }
 
-  private String getDatabasePassphrase() {
+  private char[] getDatabasePassphrase() {
     MasterSecret masterSecret = KeyCachingService.getMasterSecret();
-    return Base64.encodeBytes(masterSecret.getEncryptionKey().getEncoded());
+    byte[] password = Base64.encodeBytesToBytes(masterSecret.getEncryptionKey().getEncoded());
+    char[] buf = new char[password.length];
+    for (int i = 0; i < password.length; i++) {
+      buf[i] = (char) password[i];
+    }
+    return buf;
   }
 
   public void markCurrent(SQLiteDatabase db) {
