@@ -19,7 +19,8 @@ package org.thoughtcrime.securesms.crypto;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import javax.crypto.spec.SecretKeySpec;
+import javax.security.auth.Destroyable;
+
 import java.util.Arrays;
 
 /**
@@ -38,10 +39,10 @@ import java.util.Arrays;
  * @author Moxie Marlinspike
  */
 
-public class MasterSecret implements Parcelable {
+public class MasterSecret implements Parcelable, Destroyable {
 
-  private final SecretKeySpec encryptionKey;
-  private final SecretKeySpec macKey;
+  private final SecureSecretKeySpec encryptionKey;
+  private final SecureSecretKeySpec macKey;
 
   public static final Parcelable.Creator<MasterSecret> CREATOR = new Parcelable.Creator<MasterSecret>() {
     @Override
@@ -55,7 +56,7 @@ public class MasterSecret implements Parcelable {
     }
   };
 
-  public MasterSecret(SecretKeySpec encryptionKey, SecretKeySpec macKey) {
+  public MasterSecret(SecureSecretKeySpec encryptionKey, SecureSecretKeySpec macKey) {
     this.encryptionKey = encryptionKey;
     this.macKey        = macKey;
   }
@@ -67,8 +68,8 @@ public class MasterSecret implements Parcelable {
     byte[] macKeyBytes = new byte[in.readInt()];
     in.readByteArray(macKeyBytes);
 
-    this.encryptionKey = new SecretKeySpec(encryptionKeyBytes, "AES");
-    this.macKey        = new SecretKeySpec(macKeyBytes, "HmacSHA256");
+    this.encryptionKey = new SecureSecretKeySpec(encryptionKeyBytes, "AES");
+    this.macKey        = new SecureSecretKeySpec(macKeyBytes, "HmacSHA256");
 
     // SecretKeySpec does an internal copy in its constructor.
     Arrays.fill(encryptionKeyBytes, (byte) 0x00);
@@ -76,11 +77,11 @@ public class MasterSecret implements Parcelable {
   }
 
 
-  public SecretKeySpec getEncryptionKey() {
+  public SecureSecretKeySpec getEncryptionKey() {
     return this.encryptionKey;
   }
 
-  public SecretKeySpec getMacKey() {
+  public SecureSecretKeySpec getMacKey() {
     return this.macKey;
   }
 
@@ -116,4 +117,15 @@ public class MasterSecret implements Parcelable {
     return that;
   }
 
+  @Override
+  public void destroy() {
+    if (encryptionKey != null) encryptionKey.destroy();
+    if (macKey        != null) macKey.destroy();
+  }
+
+  @Override
+  public boolean isDestroyed() {
+    return (encryptionKey == null || encryptionKey.isDestroyed())
+            && (macKey == null || macKey.isDestroyed());
+  }
 }

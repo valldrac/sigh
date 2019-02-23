@@ -180,7 +180,9 @@ public class KeyCachingService extends Service {
   private void handleClearKey() {
     Log.w("KeyCachingService", "handleClearKey()");
     synchronized (KeyCachingService.class) {
+      KeyCachingService.masterSecret.destroy();
       KeyCachingService.masterSecret = null;
+
       stopForeground(true);
 
       Intent intent = new Intent(CLEAR_KEY_EVENT);

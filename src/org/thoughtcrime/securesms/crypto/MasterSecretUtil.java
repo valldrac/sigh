@@ -111,8 +111,8 @@ public class MasterSecretUtil {
       byte[] encryptionSecret             = Util.split(combinedSecrets, 32, 32)[0];
       byte[] macSecret                    = Util.split(combinedSecrets, 32, 32)[1];
 
-      return new MasterSecret(new SecretKeySpec(encryptionSecret, "AES"),
-                              new SecretKeySpec(macSecret, "HmacSHA256"));
+      return new MasterSecret(new SecureSecretKeySpec(encryptionSecret, "AES"),
+                              new SecureSecretKeySpec(macSecret, "HmacSHA256"));
     } catch (GeneralSecurityException e) {
       Log.w("keyutil", e);
       return null; //XXX
@@ -168,8 +168,8 @@ public class MasterSecretUtil {
       save(context, "master_secret", encryptedAndMacdMasterSecret);
       save(context, "passphrase_initialized", true);
 
-      return new MasterSecret(new SecretKeySpec(encryptionSecret, "AES"),
-                              new SecretKeySpec(macSecret, "HmacSHA256"));
+      return new MasterSecret(new SecureSecretKeySpec(encryptionSecret, "AES"),
+                              new SecureSecretKeySpec(macSecret, "HmacSHA256"));
     } catch (GeneralSecurityException e) {
       Log.w("keyutil", e);
       return null;

@@ -105,12 +105,9 @@ public class DatabaseUpgradeActivity extends BaseActivity {
     add(FULL_TEXT_SEARCH);
   }};
 
-  private MasterSecret masterSecret;
-
   @Override
   public void onCreate(Bundle bundle) {
     super.onCreate(bundle);
-    this.masterSecret = KeyCachingService.getMasterSecret();
 
     if (needsUpgradeTask()) {
       Log.w("DatabaseUpgradeActivity", "Upgrading...");
@@ -189,6 +186,7 @@ public class DatabaseUpgradeActivity extends BaseActivity {
     @Override
     protected Void doInBackground(Integer... params) {
       Context context = DatabaseUpgradeActivity.this.getApplicationContext();
+      MasterSecret masterSecret = KeyCachingService.getMasterSecret();
 
       Log.w("DatabaseUpgradeActivity", "Running background upgrade..");
       DatabaseFactory.getInstance(DatabaseUpgradeActivity.this)
