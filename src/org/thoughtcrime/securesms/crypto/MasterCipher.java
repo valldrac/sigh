@@ -40,7 +40,6 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Class that handles encryption for local storage.
@@ -193,7 +192,7 @@ public class MasterCipher {
     return ivAndBody;
   }
 	
-  private Mac getMac(SecretKeySpec key) throws NoSuchAlgorithmException, InvalidKeyException {
+  private Mac getMac(SecureSecretKeySpec key) throws NoSuchAlgorithmException, InvalidKeyException {
     Mac hmac = Mac.getInstance("HmacSHA256");
     hmac.init(key);
 
@@ -210,7 +209,7 @@ public class MasterCipher {
     return encryptedAndMac;
   }
 	
-  private Cipher getDecryptingCipher(SecretKeySpec key, byte[] encryptedBody) throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException {
+  private Cipher getDecryptingCipher(SecureSecretKeySpec key, byte[] encryptedBody) throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException {
     Cipher cipher      = Cipher.getInstance("AES/CBC/PKCS5Padding");
     IvParameterSpec iv = new IvParameterSpec(encryptedBody, 0, cipher.getBlockSize());
     cipher.init(Cipher.DECRYPT_MODE, key, iv);
@@ -218,7 +217,7 @@ public class MasterCipher {
     return cipher;
   }
 	
-  private Cipher getEncryptingCipher(SecretKeySpec key) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+  private Cipher getEncryptingCipher(SecureSecretKeySpec key) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
     Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
     cipher.init(Cipher.ENCRYPT_MODE, key);
 		

@@ -1,55 +1,114 @@
 package org.thoughtcrime.securesms.crypto;
 
-import java.lang.reflect.Field;
+import java.security.MessageDigest;
+import java.security.spec.KeySpec;
 import java.util.Arrays;
 
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
 
 /**
  * Replacement for SecretKeySpec that implements Destroyable interface
  * and securely clears secret key from memory.
  */
-public class SecureSecretKeySpec extends SecretKeySpec {
-    private boolean zeroed;
+public class SecureSecretKeySpec implements KeySpec, SecretKey {
+
+    private static final long serialVersionUID = 6577238317307289933L;
+
+    private byte[] key;
+
+    private String algorithm;
 
     public SecureSecretKeySpec(byte[] key, String algorithm) {
-        super(key, algorithm);
+        if (key == null || algorithm == null) {
+            throw new IllegalArgumentException("Missing argument");
+        }
+        if (key.length == 0) {
+            throw new IllegalArgumentException("Empty key");
+        }
+        this.key = key.clone();
+        this.algorithm = algorithm;
     }
 
     public SecureSecretKeySpec(byte[] key, int offset, int len, String algorithm) {
-        super(key, offset, len, algorithm);
+        if (key == null || algorithm == null) {
+            throw new IllegalArgumentException("Missing argument");
+        }
+        if (key.length == 0) {
+            throw new IllegalArgumentException("Empty key");
+        }
+        if (key.length-offset < len) {
+            throw new IllegalArgumentException
+                    ("Invalid offset/length combination");
+        }
+        if (len < 0) {
+            throw new ArrayIndexOutOfBoundsException("len is negative");
+        }
+        this.key = new byte[len];
+        this.algorithm = algorithm;
+        System.arraycopy(key, offset, this.key, 0, len);
     }
 
-    @Override
-    public void destroy() {
-        try {
-            super.destroy();
-        } catch (Exception | Error e) {
-            clearSecretKeyArray();
-        }
+    public String getAlgorithm()
+    {
+        return this.algorithm;
     }
 
-    @Override
-    public boolean isDestroyed() {
-        try {
-            return super.isDestroyed();
-        } catch (Exception | Error e) {
-            return zeroed;
-        }
+    public String getFormat()
+    {
+        return "RAW";
     }
 
     /**
-     * Use reflection to clear the underlying private key from memory.
+     * Returns the key material of this secret key.
+     *
+     * @return the key material. It does not clone the key
+     * as the original specification.
      */
-    private void clearSecretKeyArray() {
-        try {
-            Field f = SecretKeySpec.class.getDeclaredField("key");
-            f.setAccessible(true);
-            byte[] key = (byte[]) f.get(this);
-            Arrays.fill(key, (byte) 0x00);
-            zeroed = true;
-        } catch (Exception e) {
-            e.printStackTrace();
+    public byte[] getEncoded()
+    {
+        if (this.isDestroyed()) {
+            throw new IllegalStateException("Secret has already been destroyed");
         }
+        return this.key;
+    }
+
+    public void destroy() {
+        if (this.key != null) {
+            Arrays.fill(this.key, (byte) 0);
+            this.key = null;
+        }
+    }
+
+    public boolean isDestroyed() {
+        return this.key == null;
+    }
+
+    public int hashCode()
+    {
+        int retval = 0;
+        for (int i = 1; i < this.key.length; i++) {
+            retval += this.key[i] * i;
+        }
+        return retval ^ this.algorithm.hashCode();
+    }
+
+    public boolean equals(Object obj)
+    {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof SecretKey)) {
+            return false;
+        }
+
+        String thatAlg = ((SecretKey)obj).getAlgorithm();
+        if (!(thatAlg.equalsIgnoreCase(this.algorithm))) {
+            return false;
+        }
+
+        byte[] thatKey = ((SecretKey)obj).getEncoded();
+
+        return MessageDigest.isEqual(this.key, thatKey);
     }
 }
