@@ -1,54 +1,46 @@
 package org.thoughtcrime.securesms.jobs;
 
 import android.content.Context;
-import android.util.Log;
+import android.support.annotation.NonNull;
 
+import org.thoughtcrime.securesms.jobmanager.SafeData;
+import org.thoughtcrime.securesms.logging.Log;
+
+import org.thoughtcrime.securesms.jobmanager.JobParameters;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.thoughtcrime.securesms.jobqueue.JobParameters;
 import org.whispersystems.libsignal.InvalidVersionException;
 import org.whispersystems.signalservice.api.messages.SignalServiceEnvelope;
 
 import java.io.IOException;
 
+import androidx.work.Data;
+import androidx.work.WorkerParameters;
+
 public class PushContentReceiveJob extends PushReceivedJob {
 
-  private static final String TAG = PushContentReceiveJob.class.getSimpleName();
+  private static final long   serialVersionUID = 5685475456901715638L;
 
-  private final String data;
+  public PushContentReceiveJob(@NonNull Context context, @NonNull WorkerParameters workerParameters) {
+    super(context, workerParameters);
+  }
 
   public PushContentReceiveJob(Context context) {
     super(context, JobParameters.newBuilder().create());
-    this.data = null;
-  }
-
-  public PushContentReceiveJob(Context context, String data) {
-    super(context, JobParameters.newBuilder()
-                                .withPersistence()
-                                .withWakeLock(true)
-                                .create());
-
-    this.data = data;
   }
 
   @Override
-  public void onAdded() {}
+  protected void initialize(@NonNull SafeData data) { }
 
   @Override
-  public void onRun() {
-    try {
-      String                sessionKey = TextSecurePreferences.getSignalingKey(context);
-      SignalServiceEnvelope envelope   = new SignalServiceEnvelope(data, sessionKey);
-
-      handle(envelope);
-    } catch (IOException | InvalidVersionException e) {
-      Log.w(TAG, e);
-    }
+  protected @NonNull Data serialize(@NonNull Data.Builder dataBuilder) {
+    return dataBuilder.build();
   }
 
   @Override
-  public void onCanceled() {
+  public void onRun() { }
 
-  }
+  @Override
+  public void onCanceled() { }
 
   @Override
   public boolean onShouldRetry(Exception exception) {

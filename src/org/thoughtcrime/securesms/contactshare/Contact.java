@@ -6,14 +6,11 @@ import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.json.JSONException;
 import org.thoughtcrime.securesms.attachments.Attachment;
 import org.thoughtcrime.securesms.attachments.AttachmentId;
 import org.thoughtcrime.securesms.attachments.UriAttachment;
@@ -582,7 +579,7 @@ public class Contact implements Parcelable {
     }
   }
 
-  public static class Avatar implements Parcelable {
+  public static class Avatar implements Selectable, Parcelable {
 
     @JsonProperty
     private final AttachmentId attachmentId;
@@ -593,10 +590,14 @@ public class Contact implements Parcelable {
     @JsonIgnore
     private final Attachment   attachment;
 
+    @JsonIgnore
+    private boolean selected;
+
     public Avatar(@Nullable AttachmentId attachmentId, @Nullable Attachment attachment, boolean isProfile) {
       this.attachmentId = attachmentId;
       this.attachment   = attachment;
       this.isProfile    = isProfile;
+      this.selected     = true;
     }
 
     Avatar(@Nullable Uri attachmentUri, boolean isProfile) {
@@ -625,13 +626,23 @@ public class Contact implements Parcelable {
     }
 
     @Override
+    public void setSelected(boolean selected) {
+      this.selected = selected;
+    }
+
+    @Override
+    public boolean isSelected() {
+      return selected;
+    }
+
+    @Override
     public int describeContents() {
       return 0;
     }
 
     private static Attachment attachmentFromUri(@Nullable Uri uri) {
       if (uri == null) return null;
-      return new UriAttachment(uri, MediaUtil.IMAGE_JPEG, AttachmentDatabase.TRANSFER_PROGRESS_DONE, 0, null, false, false);
+      return new UriAttachment(uri, MediaUtil.IMAGE_JPEG, AttachmentDatabase.TRANSFER_PROGRESS_DONE, 0, null, false, false, null);
     }
 
     @Override

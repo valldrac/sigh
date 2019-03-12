@@ -28,8 +28,10 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 import android.util.Pair;
+
+import com.bumptech.glide.Glide;
 
 import net.sqlcipher.database.SQLiteDatabase;
 
@@ -76,7 +78,7 @@ public class AttachmentDatabase extends Database {
   public  static final String TABLE_NAME             = "part";
   public  static final String ROW_ID                 = "_id";
           static final String ATTACHMENT_JSON_ALIAS  = "attachment_json";
-          static final String MMS_ID                 = "mid";
+  public  static final String MMS_ID                 = "mid";
           static final String CONTENT_TYPE           = "ct";
           static final String NAME                   = "name";
           static final String CONTENT_DISPOSITION    = "cd";
@@ -96,6 +98,7 @@ public class AttachmentDatabase extends Database {
   private static final String THUMBNAIL_RANDOM       = "thumbnail_random";
           static final String WIDTH                  = "width";
           static final String HEIGHT                 = "height";
+          static final String CAPTION                = "caption";
 
   public  static final String DIRECTORY              = "parts";
 
@@ -111,7 +114,8 @@ public class AttachmentDatabase extends Database {
                                                            CONTENT_LOCATION, DATA, THUMBNAIL, TRANSFER_STATE,
                                                            SIZE, FILE_NAME, THUMBNAIL, THUMBNAIL_ASPECT_RATIO,
                                                            UNIQUE_ID, DIGEST, FAST_PREFLIGHT_ID, VOICE_NOTE,
-                                                           QUOTE, DATA_RANDOM, THUMBNAIL_RANDOM, WIDTH, HEIGHT};
+                                                           QUOTE, DATA_RANDOM, THUMBNAIL_RANDOM, WIDTH, HEIGHT,
+                                                           CAPTION };
 
   public static final String CREATE_TABLE = "CREATE TABLE " + TABLE_NAME + " (" + ROW_ID + " INTEGER PRIMARY KEY, " +
     MMS_ID + " INTEGER, " + "seq" + " INTEGER DEFAULT 0, "                        +
@@ -123,7 +127,8 @@ public class AttachmentDatabase extends Database {
     FILE_NAME + " TEXT, " + THUMBNAIL + " TEXT, " + THUMBNAIL_ASPECT_RATIO + " REAL, " +
     UNIQUE_ID + " INTEGER NOT NULL, " + DIGEST + " BLOB, " + FAST_PREFLIGHT_ID + " TEXT, " +
     VOICE_NOTE + " INTEGER DEFAULT 0, " + DATA_RANDOM + " BLOB, " + THUMBNAIL_RANDOM + " BLOB, " +
-    QUOTE + " INTEGER DEFAULT 0, " + WIDTH + " INTEGER DEFAULT 0, " + HEIGHT + " INTEGER DEFAULT 0);";
+    QUOTE + " INTEGER DEFAULT 0, " + WIDTH + " INTEGER DEFAULT 0, " + HEIGHT + " INTEGER DEFAULT 0, " +
+    CAPTION + " TEXT DEFAULT NULL);";
 
   public static final String[] CREATE_INDEXS = {
     "CREATE INDEX IF NOT EXISTS part_mms_id_index ON " + TABLE_NAME + " (" + MMS_ID + ");",
@@ -151,7 +156,7 @@ public class AttachmentDatabase extends Database {
   public @NonNull InputStream getThumbnailStream(@NonNull AttachmentId attachmentId)
       throws IOException
   {
-    Log.w(TAG, "getThumbnailStream(" + attachmentId + ")");
+    Log.d(TAG, "getThumbnailStream(" + attachmentId + ")");
     InputStream dataStream = getDataStream(attachmentId, THUMBNAIL, 0);
 
     if (dataStream != null) {
@@ -248,11 +253,11 @@ public class AttachmentDatabase extends Database {
     Cursor cursor           = null;
 
     try {
-      cursor = database.query(TABLE_NAME, new String[] {DATA, THUMBNAIL}, MMS_ID + " = ?",
+      cursor = database.query(TABLE_NAME, new String[] {DATA, THUMBNAIL, CONTENT_TYPE}, MMS_ID + " = ?",
                               new String[] {mmsId+""}, null, null, null);
 
       while (cursor != null && cursor.moveToNext()) {
-        deleteAttachmentOnDisk(cursor.getString(0), cursor.getString(1));
+        deleteAttachmentOnDisk(cursor.getString(0), cursor.getString(1), cursor.getString(2));
       }
     } finally {
       if (cursor != null)
@@ -267,7 +272,7 @@ public class AttachmentDatabase extends Database {
     SQLiteDatabase database = databaseHelper.getWritableDatabase();
 
     try (Cursor cursor = database.query(TABLE_NAME,
-                                        new String[]{DATA, THUMBNAIL},
+                                        new String[]{DATA, THUMBNAIL, CONTENT_TYPE},
                                         PART_ID_WHERE,
                                         id.toStrings(),
                                         null,
@@ -278,11 +283,12 @@ public class AttachmentDatabase extends Database {
         Log.w(TAG, "Tried to delete an attachment, but it didn't exist.");
         return;
       }
-      String data      = cursor.getString(0);
-      String thumbnail = cursor.getString(1);
+      String data        = cursor.getString(0);
+      String thumbnail   = cursor.getString(1);
+      String contentType = cursor.getString(2);
 
       database.delete(TABLE_NAME, PART_ID_WHERE, id.toStrings());
-      deleteAttachmentOnDisk(data, thumbnail);
+      deleteAttachmentOnDisk(data, thumbnail, contentType);
       notifyAttachmentListeners();
     }
   }
@@ -303,13 +309,17 @@ public class AttachmentDatabase extends Database {
   }
 
   @SuppressWarnings("ResultOfMethodCallIgnored")
-  private void deleteAttachmentOnDisk(@Nullable String data, @Nullable String thumbnail) {
+  private void deleteAttachmentOnDisk(@Nullable String data, @Nullable String thumbnail, @Nullable String contentType) {
     if (!TextUtils.isEmpty(data)) {
       new File(data).delete();
     }
 
     if (!TextUtils.isEmpty(thumbnail)) {
       new File(thumbnail).delete();
+    }
+
+    if (MediaUtil.isImageType(contentType) || thumbnail != null) {
+      Glide.get(context).clearDiskCache();
     }
   }
 
@@ -348,23 +358,38 @@ public class AttachmentDatabase extends Database {
     thumbnailExecutor.submit(new ThumbnailFetchCallable(attachmentId));
   }
 
+  public void updateAttachmentAfterUpload(@NonNull AttachmentId id, @NonNull Attachment attachment) {
+    SQLiteDatabase database = databaseHelper.getWritableDatabase();
+    ContentValues  values   = new ContentValues();
+
+    values.put(TRANSFER_STATE, TRANSFER_PROGRESS_DONE);
+    values.put(CONTENT_LOCATION, attachment.getLocation());
+    values.put(DIGEST, attachment.getDigest());
+    values.put(CONTENT_DISPOSITION, attachment.getKey());
+    values.put(NAME, attachment.getRelay());
+    values.put(SIZE, attachment.getSize());
+    values.put(FAST_PREFLIGHT_ID, attachment.getFastPreflightId());
+
+    database.update(TABLE_NAME, values, PART_ID_WHERE, id.toStrings());
+  }
+
   @NonNull Map<Attachment, AttachmentId> insertAttachmentsForMessage(long mmsId, @NonNull List<Attachment> attachments, @NonNull List<Attachment> quoteAttachment)
       throws MmsException
   {
-    Log.w(TAG, "insertParts(" + attachments.size() + ")");
+    Log.d(TAG, "insertParts(" + attachments.size() + ")");
 
     Map<Attachment, AttachmentId> insertedAttachments = new HashMap<>();
 
     for (Attachment attachment : attachments) {
       AttachmentId attachmentId = insertAttachment(mmsId, attachment, attachment.isQuote());
       insertedAttachments.put(attachment, attachmentId);
-      Log.w(TAG, "Inserted attachment at ID: " + attachmentId);
+      Log.i(TAG, "Inserted attachment at ID: " + attachmentId);
     }
 
     for (Attachment attachment : quoteAttachment) {
       AttachmentId attachmentId = insertAttachment(mmsId, attachment, true);
       insertedAttachments.put(attachment, attachmentId);
-      Log.w(TAG, "Inserted quoted attachment at ID: " + attachmentId);
+      Log.i(TAG, "Inserted quoted attachment at ID: " + attachmentId);
     }
 
     return insertedAttachments;
@@ -409,7 +434,8 @@ public class AttachmentDatabase extends Database {
                                   databaseAttachment.isVoiceNote(),
                                   mediaStream.getWidth(),
                                   mediaStream.getHeight(),
-                                  databaseAttachment.isQuote());
+                                  databaseAttachment.isQuote(),
+                                  databaseAttachment.getCaption());
   }
 
 
@@ -582,7 +608,8 @@ public class AttachmentDatabase extends Database {
                                               object.getInt(VOICE_NOTE) == 1,
                                               object.getInt(WIDTH),
                                               object.getInt(HEIGHT),
-                                              object.getInt(QUOTE) == 1));
+                                              object.getInt(QUOTE) == 1,
+                                              object.getString(CAPTION)));
           }
         }
 
@@ -605,7 +632,8 @@ public class AttachmentDatabase extends Database {
                                                                 cursor.getInt(cursor.getColumnIndexOrThrow(VOICE_NOTE)) == 1,
                                                                 cursor.getInt(cursor.getColumnIndexOrThrow(WIDTH)),
                                                                 cursor.getInt(cursor.getColumnIndexOrThrow(HEIGHT)),
-                                                                cursor.getInt(cursor.getColumnIndexOrThrow(QUOTE)) == 1));
+                                                                cursor.getInt(cursor.getColumnIndexOrThrow(QUOTE)) == 1,
+                                                                cursor.getString(cursor.getColumnIndexOrThrow(CAPTION))));
       }
     } catch (JSONException e) {
       throw new AssertionError(e);
@@ -616,7 +644,7 @@ public class AttachmentDatabase extends Database {
   private AttachmentId insertAttachment(long mmsId, Attachment attachment, boolean quote)
       throws MmsException
   {
-    Log.w(TAG, "Inserting attachment for mms id: " + mmsId);
+    Log.d(TAG, "Inserting attachment for mms id: " + mmsId);
 
     SQLiteDatabase database = databaseHelper.getWritableDatabase();
     DataInfo       dataInfo = null;
@@ -624,7 +652,7 @@ public class AttachmentDatabase extends Database {
 
     if (attachment.getDataUri() != null) {
       dataInfo = setAttachmentData(attachment.getDataUri());
-      Log.w(TAG, "Wrote part to file: " + dataInfo.file.getAbsolutePath());
+      Log.d(TAG, "Wrote part to file: " + dataInfo.file.getAbsolutePath());
     }
 
     ContentValues contentValues = new ContentValues();
@@ -643,6 +671,7 @@ public class AttachmentDatabase extends Database {
     contentValues.put(WIDTH, attachment.getWidth());
     contentValues.put(HEIGHT, attachment.getHeight());
     contentValues.put(QUOTE, quote);
+    contentValues.put(CAPTION, attachment.getCaption());
 
     if (dataInfo != null) {
       contentValues.put(DATA, dataInfo.file.getAbsolutePath());
@@ -679,7 +708,7 @@ public class AttachmentDatabase extends Database {
           thumbnailExecutor.submit(new ThumbnailFetchCallable(attachmentId));
         }
       } else {
-        Log.w(TAG, "Submitting thumbnail generation job...");
+        Log.i(TAG, "Submitting thumbnail generation job...");
         thumbnailExecutor.submit(new ThumbnailFetchCallable(attachmentId));
       }
     }
@@ -692,7 +721,7 @@ public class AttachmentDatabase extends Database {
   protected void updateAttachmentThumbnail(AttachmentId attachmentId, InputStream in, float aspectRatio)
       throws MmsException
   {
-    Log.w(TAG, "updating part thumbnail for #" + attachmentId);
+    Log.i(TAG, "updating part thumbnail for #" + attachmentId);
 
     DataInfo thumbnailFile = setAttachmentData(in);
 
@@ -728,7 +757,7 @@ public class AttachmentDatabase extends Database {
 
     @Override
     public @Nullable InputStream call() throws Exception {
-      Log.w(TAG, "Executing thumbnail job...");
+      Log.d(TAG, "Executing thumbnail job...");
       final InputStream stream = getDataStream(attachmentId, THUMBNAIL, 0);
 
       if (stream != null) {
@@ -776,7 +805,7 @@ public class AttachmentDatabase extends Database {
 
       Bitmap bitmap = retriever.getFrameAtTime(1000);
 
-      Log.w(TAG, "Generated video thumbnail...");
+      Log.i(TAG, "Generated video thumbnail...");
       return new ThumbnailData(bitmap);
     }
   }

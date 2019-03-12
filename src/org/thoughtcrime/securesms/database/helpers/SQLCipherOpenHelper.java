@@ -4,9 +4,13 @@ package org.thoughtcrime.securesms.database.helpers;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
-import android.util.Log;
+import android.text.TextUtils;
+
+import org.thoughtcrime.securesms.database.Address;
+import org.thoughtcrime.securesms.logging.Log;
 
 import net.sqlcipher.database.SQLiteDatabase;
 import net.sqlcipher.database.SQLiteDatabaseHook;
@@ -19,7 +23,6 @@ import org.thoughtcrime.securesms.database.DraftDatabase;
 import org.thoughtcrime.securesms.database.GroupDatabase;
 import org.thoughtcrime.securesms.database.GroupReceiptDatabase;
 import org.thoughtcrime.securesms.database.IdentityDatabase;
-import org.thoughtcrime.securesms.database.JobQueueDatabase;
 import org.thoughtcrime.securesms.database.MmsDatabase;
 import org.thoughtcrime.securesms.database.OneTimePreKeyDatabase;
 import org.thoughtcrime.securesms.database.PushDatabase;
@@ -30,6 +33,7 @@ import org.thoughtcrime.securesms.database.SignedPreKeyDatabase;
 import org.thoughtcrime.securesms.database.SmsDatabase;
 import org.thoughtcrime.securesms.database.ThreadDatabase;
 import org.thoughtcrime.securesms.jobs.RefreshPreKeysJob;
+import org.thoughtcrime.securesms.notifications.NotificationChannels;
 import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.Base64;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
@@ -49,9 +53,18 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
   private static final int QUOTED_REPLIES                   = 7;
   private static final int SHARED_CONTACTS                  = 8;
   private static final int FULL_TEXT_SEARCH                 = 9;
+  private static final int BAD_IMPORT_CLEANUP               = 10;
+  private static final int QUOTE_MISSING                    = 11;
+  private static final int NOTIFICATION_CHANNELS            = 12;
+  private static final int SECRET_SENDER                    = 13;
+  private static final int ATTACHMENT_CAPTIONS              = 14;
+  private static final int ATTACHMENT_CAPTIONS_FIX          = 15;
+  private static final int PREVIEWS                         = 16;
+  private static final int CONVERSATION_SEARCH              = 17;
+  private static final int SELF_ATTACHMENT_CLEANUP          = 18;
 
-  private static final int    DATABASE_VERSION = 9;
-  private static final String DATABASE_NAME    = "signal.db";
+  private static final int    DATABASE_VERSION = 18;
+  private static final String DATABASE_NAME    = "sigh.db";
 
   private final Context        context;
 
@@ -91,7 +104,6 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
     for (String sql : SearchDatabase.CREATE_TABLE) {
       db.execSQL(sql);
     }
-    db.execSQL(JobQueueDatabase.CREATE_TABLE);
 
     executeStatements(db, SmsDatabase.CREATE_INDEXS);
     executeStatements(db, MmsDatabase.CREATE_INDEXS);
@@ -100,123 +112,19 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
     executeStatements(db, DraftDatabase.CREATE_INDEXS);
     executeStatements(db, GroupDatabase.CREATE_INDEXS);
     executeStatements(db, GroupReceiptDatabase.CREATE_INDEXES);
-
-    if (context.getDatabasePath(ClassicOpenHelper.NAME).exists()) {
-      ClassicOpenHelper                      legacyHelper = new ClassicOpenHelper(context);
-      android.database.sqlite.SQLiteDatabase legacyDb     = legacyHelper.getWritableDatabase();
-
-      SQLCipherMigrationHelper.migratePlaintext(context, legacyDb, db);
-
-      MasterSecret masterSecret = KeyCachingService.getMasterSecret();
-
-      if (masterSecret != null) SQLCipherMigrationHelper.migrateCiphertext(context, masterSecret, legacyDb, db, null);
-      else                      TextSecurePreferences.setNeedsSqlCipherMigration(context, true);
-
-      if (!PreKeyMigrationHelper.migratePreKeys(context, db)) {
-        ApplicationContext.getInstance(context).getJobManager().add(new RefreshPreKeysJob(context));
-      }
-
-      SessionStoreMigrationHelper.migrateSessions(context, db);
-      PreKeyMigrationHelper.cleanUpPreKeys(context);
-    }
   }
 
   @Override
   public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-    Log.w(TAG, "Upgrading database: " + oldVersion + ", " + newVersion);
+    Log.i(TAG, "Upgrading database: " + oldVersion + ", " + newVersion);
 
     db.beginTransaction();
 
     try {
 
-      if (oldVersion < RECIPIENT_CALL_RINGTONE_VERSION) {
-        db.execSQL("ALTER TABLE recipient_preferences ADD COLUMN call_ringtone TEXT DEFAULT NULL");
-        db.execSQL("ALTER TABLE recipient_preferences ADD COLUMN call_vibrate INTEGER DEFAULT " + RecipientDatabase.VibrateState.DEFAULT.getId());
-      }
-
-      if (oldVersion < MIGRATE_PREKEYS_VERSION) {
-        db.execSQL("CREATE TABLE signed_prekeys (_id INTEGER PRIMARY KEY, key_id INTEGER UNIQUE, public_key TEXT NOT NULL, private_key TEXT NOT NULL, signature TEXT NOT NULL, timestamp INTEGER DEFAULT 0)");
-        db.execSQL("CREATE TABLE one_time_prekeys (_id INTEGER PRIMARY KEY, key_id INTEGER UNIQUE, public_key TEXT NOT NULL, private_key TEXT NOT NULL)");
-
-        if (!PreKeyMigrationHelper.migratePreKeys(context, db)) {
-          ApplicationContext.getInstance(context).getJobManager().add(new RefreshPreKeysJob(context));
-        }
-      }
-
-      if (oldVersion < MIGRATE_SESSIONS_VERSION) {
-        db.execSQL("CREATE TABLE sessions (_id INTEGER PRIMARY KEY, address TEXT NOT NULL, device INTEGER NOT NULL, record BLOB NOT NULL, UNIQUE(address, device) ON CONFLICT REPLACE)");
-        SessionStoreMigrationHelper.migrateSessions(context, db);
-      }
-
-      if (oldVersion < NO_MORE_IMAGE_THUMBNAILS_VERSION) {
-        ContentValues update = new ContentValues();
-        update.put("thumbnail", (String)null);
-        update.put("aspect_ratio", (String)null);
-        update.put("thumbnail_random", (String)null);
-
-        try (Cursor cursor = db.query("part", new String[] {"_id", "ct", "thumbnail"}, "thumbnail IS NOT NULL", null, null, null, null)) {
-          while (cursor != null && cursor.moveToNext()) {
-            long   id          = cursor.getLong(cursor.getColumnIndexOrThrow("_id"));
-            String contentType = cursor.getString(cursor.getColumnIndexOrThrow("ct"));
-
-            if (contentType != null && !contentType.startsWith("video")) {
-              String thumbnailPath = cursor.getString(cursor.getColumnIndexOrThrow("thumbnail"));
-              File   thumbnailFile = new File(thumbnailPath);
-              thumbnailFile.delete();
-
-              db.update("part", update, "_id = ?", new String[] {String.valueOf(id)});
-            }
-          }
-        }
-      }
-
-      if (oldVersion < ATTACHMENT_DIMENSIONS) {
-        db.execSQL("ALTER TABLE part ADD COLUMN width INTEGER DEFAULT 0");
-        db.execSQL("ALTER TABLE part ADD COLUMN height INTEGER DEFAULT 0");
-      }
-
-      if (oldVersion < QUOTED_REPLIES) {
-        db.execSQL("ALTER TABLE mms ADD COLUMN quote_id INTEGER DEFAULT 0");
-        db.execSQL("ALTER TABLE mms ADD COLUMN quote_author TEXT");
-        db.execSQL("ALTER TABLE mms ADD COLUMN quote_body TEXT");
-        db.execSQL("ALTER TABLE mms ADD COLUMN quote_attachment INTEGER DEFAULT -1");
-
-        db.execSQL("ALTER TABLE part ADD COLUMN quote INTEGER DEFAULT 0");
-      }
-
-      if (oldVersion < SHARED_CONTACTS) {
-        db.execSQL("ALTER TABLE mms ADD COLUMN shared_contacts TEXT");
-      }
-
-      if (oldVersion < FULL_TEXT_SEARCH) {
-        for (String sql : SearchDatabase.CREATE_TABLE) {
-          db.execSQL(sql);
-        }
-
-        Log.i(TAG, "Beginning to build search index.");
-        long start = SystemClock.elapsedRealtime();
-
-        db.execSQL("INSERT INTO " + SearchDatabase.SMS_FTS_TABLE_NAME + " (rowid, " + SearchDatabase.BODY + ") " +
-            "SELECT " + SmsDatabase.ID + " , " + SmsDatabase.BODY + " FROM " + SmsDatabase.TABLE_NAME);
-
-        long smsFinished = SystemClock.elapsedRealtime();
-        Log.i(TAG, "Indexing SMS completed in " + (smsFinished - start) + " ms");
-
-        db.execSQL("INSERT INTO " + SearchDatabase.MMS_FTS_TABLE_NAME + " (rowid, " + SearchDatabase.BODY + ") " +
-            "SELECT " + MmsDatabase.ID + " , " + MmsDatabase.BODY + " FROM " + MmsDatabase.TABLE_NAME);
-
-        long mmsFinished = SystemClock.elapsedRealtime();
-        Log.i(TAG, "Indexing MMS completed in " + (mmsFinished - smsFinished) + " ms");
-        Log.i(TAG, "Indexing finished. Total time: " + (mmsFinished - start) + " ms");
-      }
-
       db.setTransactionSuccessful();
     } finally {
       db.endTransaction();
-    }
-
-    if (oldVersion < MIGRATE_PREKEYS_VERSION) {
-      PreKeyMigrationHelper.cleanUpPreKeys(context);
     }
   }
 
@@ -247,5 +155,19 @@ public class SQLCipherOpenHelper extends SQLiteOpenHelper {
       db.execSQL(statement);
   }
 
+  private static boolean columnExists(@NonNull SQLiteDatabase db, @NonNull String table, @NonNull String column) {
+    try (Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null)) {
+      int nameColumnIndex = cursor.getColumnIndexOrThrow("name");
 
+      while (cursor.moveToNext()) {
+        String name = cursor.getString(nameColumnIndex);
+
+        if (name.equals(column)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
 }

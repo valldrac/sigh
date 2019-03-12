@@ -39,7 +39,7 @@ import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.style.StyleSpan;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 
 import com.google.android.mms.pdu_alt.CharacterSets;
 import com.google.android.mms.pdu_alt.EncodedStringValue;
@@ -54,6 +54,8 @@ import org.thoughtcrime.securesms.mms.OutgoingLegacyMmsConnection;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -61,11 +63,13 @@ import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -74,7 +78,7 @@ import java.util.concurrent.TimeUnit;
 public class Util {
   private static final String TAG = Util.class.getSimpleName();
 
-  public static Handler handler = new Handler(Looper.getMainLooper());
+  private static volatile Handler handler;
 
   public static <T> List<T> asList(T... elements) {
     List<T> result = new LinkedList<>();
@@ -130,6 +134,34 @@ public class Util {
     return value == null || value.getText() == null || TextUtils.isEmpty(value.getTextTrimmed());
   }
 
+  public static boolean isEmpty(Collection collection) {
+    return collection == null || collection.isEmpty();
+  }
+
+  public static <K, V> V getOrDefault(@NonNull Map<K, V> map, K key, V defaultValue) {
+    return map.containsKey(key) ? map.get(key) : defaultValue;
+  }
+
+  public static String getFirstNonEmpty(String... values) {
+    for (String value : values) {
+      if (!TextUtils.isEmpty(value)) {
+        return value;
+      }
+    }
+    return "";
+  }
+
+  public static <E> List<List<E>> chunk(@NonNull List<E> list, int chunkSize) {
+    List<List<E>> chunks = new ArrayList<>(list.size() / chunkSize);
+
+    for (int i = 0; i < list.size(); i += chunkSize) {
+      List<E> chunk = list.subList(i, Math.min(list.size(), i + chunkSize));
+      chunks.add(chunk);
+    }
+
+    return chunks;
+  }
+
   public static CharSequence getBoldedString(String value) {
     SpannableString spanned = new SpannableString(value);
     spanned.setSpan(new StyleSpan(Typeface.BOLD), 0,
@@ -171,17 +203,9 @@ public class Util {
     }
   }
 
-  public static void close(InputStream in) {
+  public static void close(Closeable closeable) {
     try {
-      in.close();
-    } catch (IOException e) {
-      Log.w(TAG, e);
-    }
-  }
-
-  public static void close(OutputStream out) {
-    try {
-      out.close();
+      closeable.close();
     } catch (IOException e) {
       Log.w(TAG, e);
     }
@@ -208,14 +232,18 @@ public class Util {
   }
 
   public static void readFully(InputStream in, byte[] buffer) throws IOException {
+    readFully(in, buffer, buffer.length);
+  }
+
+  public static void readFully(InputStream in, byte[] buffer, int len) throws IOException {
     int offset = 0;
 
     for (;;) {
-      int read = in.read(buffer, offset, buffer.length - offset);
-      if (read == -1) throw new IOException("Stream ended early");
+      int read = in.read(buffer, offset, len - offset);
+      if (read == -1) throw new EOFException("Stream ended early");
 
-      if (read + offset < buffer.length) offset += read;
-      else                		           return;
+      if (read + offset < len) offset += read;
+      else                		 return;
     }
   }
 
@@ -386,13 +414,21 @@ public class Util {
     }
   }
 
+  public static void postToMain(final @NonNull Runnable runnable) {
+    getHandler().post(runnable);
+  }
+
   public static void runOnMain(final @NonNull Runnable runnable) {
     if (isMainThread()) runnable.run();
-    else                handler.post(runnable);
+    else                getHandler().post(runnable);
   }
 
   public static void runOnMainDelayed(final @NonNull Runnable runnable, long delayMillis) {
-    handler.postDelayed(runnable, delayMillis);
+    getHandler().postDelayed(runnable, delayMillis);
+  }
+
+  public static void cancelRunnableOnMain(@NonNull Runnable runnable) {
+    getHandler().removeCallbacks(runnable);
   }
 
   public static void runOnMainSync(final @NonNull Runnable runnable) {
@@ -494,5 +530,16 @@ public class Util {
     int      digitGroups = (int) (Math.log10(sizeBytes) / Math.log10(1024));
 
     return new DecimalFormat("#,##0.#").format(sizeBytes/Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+  }
+
+  private static Handler getHandler() {
+    if (handler == null) {
+      synchronized (Util.class) {
+        if (handler == null) {
+          handler = new Handler(Looper.getMainLooper());
+        }
+      }
+    }
+    return handler;
   }
 }

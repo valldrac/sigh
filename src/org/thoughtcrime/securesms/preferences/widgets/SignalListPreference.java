@@ -5,6 +5,7 @@ import android.content.Context;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v7.preference.ListPreference;
+import android.support.v7.preference.Preference;
 import android.support.v7.preference.PreferenceViewHolder;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -16,8 +17,9 @@ import org.thoughtcrime.securesms.util.ViewUtil;
 
 public class SignalListPreference extends ListPreference {
 
-  private TextView rightSummary;
-  private CharSequence summary;
+  private TextView                  rightSummary;
+  private CharSequence              summary;
+  private OnPreferenceClickListener clickListener;
 
   @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
   public SignalListPreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
@@ -61,6 +63,18 @@ public class SignalListPreference extends ListPreference {
 
     if (this.rightSummary != null) {
       this.rightSummary.setText(summary);
+    }
+  }
+
+  @Override
+  public void setOnPreferenceClickListener(OnPreferenceClickListener onPreferenceClickListener) {
+    this.clickListener = onPreferenceClickListener;
+  }
+
+  @Override
+  protected void onClick() {
+    if (clickListener == null || !clickListener.onPreferenceClick(this)) {
+      super.onClick();
     }
   }
 }

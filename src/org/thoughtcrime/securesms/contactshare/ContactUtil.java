@@ -11,19 +11,22 @@ import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.annimon.stream.Stream;
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber.PhoneNumber;
 
+import org.thoughtcrime.securesms.R;
+import org.thoughtcrime.securesms.components.emoji.EmojiStrings;
 import org.thoughtcrime.securesms.contactshare.Contact.Email;
 import org.thoughtcrime.securesms.contactshare.Contact.Phone;
 import org.thoughtcrime.securesms.contactshare.Contact.PostalAddress;
 import org.thoughtcrime.securesms.database.Address;
+import org.thoughtcrime.securesms.logging.Log;
 import org.thoughtcrime.securesms.mms.PartAuthority;
 import org.thoughtcrime.securesms.recipients.Recipient;
+import org.thoughtcrime.securesms.util.SpanUtil;
 import org.thoughtcrime.securesms.util.Util;
 
 import java.io.IOException;
@@ -41,6 +44,16 @@ public final class ContactUtil {
     } catch (NumberFormatException e) {
       return -1;
     }
+  }
+
+  public static @NonNull CharSequence getStringSummary(@NonNull Context context, @NonNull Contact contact) {
+    String  contactName = ContactUtil.getDisplayName(contact);
+
+    if (!TextUtils.isEmpty(contactName)) {
+      return context.getString(R.string.MessageNotifier_contact_message, EmojiStrings.BUST_IN_SILHOUETTE, contactName);
+    }
+
+    return SpanUtil.italic(context.getString(R.string.MessageNotifier_unknown_contact_message));
   }
 
   public static @NonNull String getDisplayName(@Nullable Contact contact) {
@@ -129,6 +142,10 @@ public final class ContactUtil {
   public static @NonNull Intent buildAddToContactsIntent(@NonNull Context context, @NonNull Contact contact) {
     Intent intent = new Intent(Intent.ACTION_INSERT_OR_EDIT);
     intent.setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE);
+
+    if (!TextUtils.isEmpty(contact.getName().getDisplayName())) {
+      intent.putExtra(ContactsContract.Intents.Insert.NAME, contact.getName().getDisplayName());
+    }
 
     if (!TextUtils.isEmpty(contact.getOrganization())) {
       intent.putExtra(ContactsContract.Intents.Insert.COMPANY, contact.getOrganization());

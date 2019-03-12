@@ -9,7 +9,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 import android.util.Pair;
 import android.webkit.MimeTypeMap;
 
@@ -26,6 +26,7 @@ import org.thoughtcrime.securesms.mms.ImageSlide;
 import org.thoughtcrime.securesms.mms.MmsSlide;
 import org.thoughtcrime.securesms.mms.PartAuthority;
 import org.thoughtcrime.securesms.mms.Slide;
+import org.thoughtcrime.securesms.mms.TextSlide;
 import org.thoughtcrime.securesms.mms.VideoSlide;
 import org.thoughtcrime.securesms.providers.PersistentBlobProvider;
 
@@ -45,6 +46,7 @@ public class MediaUtil {
   public static final String AUDIO_UNSPECIFIED = "audio/*";
   public static final String VIDEO_UNSPECIFIED = "video/*";
   public static final String VCARD             = "text/x-vcard";
+  public static final String LONG_TEXT         = "text/x-signal-plain";
 
 
   public static Slide getSlideForAttachment(Context context, Attachment attachment) {
@@ -59,6 +61,8 @@ public class MediaUtil {
       slide = new AudioSlide(context, attachment);
     } else if (isMms(attachment.getContentType())) {
       slide = new MmsSlide(context, attachment);
+    } else if (isLongTextType(attachment.getContentType())) {
+      slide = new TextSlide(context, attachment);
     } else if (attachment.getContentType() != null) {
       slide = new DocumentSlide(context, attachment);
     }
@@ -69,8 +73,8 @@ public class MediaUtil {
   public static @Nullable String getMimeType(Context context, Uri uri) {
     if (uri == null) return null;
 
-    if (PersistentBlobProvider.isAuthority(context, uri)) {
-      return PersistentBlobProvider.getMimeType(context, uri);
+    if (PartAuthority.isLocalUri(uri)) {
+      return PartAuthority.getAttachmentContentType(context, uri);
     }
 
     String type = context.getContentResolver().getType(uri);
@@ -78,6 +82,7 @@ public class MediaUtil {
       final String extension = MimeTypeMap.getFileExtensionFromUrl(uri.toString());
       type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.toLowerCase());
     }
+
     return getCorrectedMimeType(type);
   }
 
@@ -229,8 +234,12 @@ public class MediaUtil {
     return (null != contentType) && contentType.startsWith("video/");
   }
 
+  public static boolean isLongTextType(String contentType) {
+    return (null != contentType) && contentType.equals(LONG_TEXT);
+  }
+
   public static boolean hasVideoThumbnail(Uri uri) {
-    Log.w(TAG, "Checking: " + uri);
+    Log.i(TAG, "Checking: " + uri);
 
     if (uri == null || !ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) {
       return false;
@@ -238,6 +247,8 @@ public class MediaUtil {
 
     if ("com.android.providers.media.documents".equals(uri.getAuthority())) {
       return uri.getLastPathSegment().contains("video");
+    } else if (uri.toString().startsWith(MediaStore.Video.Media.EXTERNAL_CONTENT_URI.toString())) {
+      return true;
     }
 
     return false;
@@ -246,6 +257,13 @@ public class MediaUtil {
   public static @Nullable Bitmap getVideoThumbnail(Context context, Uri uri) {
     if ("com.android.providers.media.documents".equals(uri.getAuthority())) {
       long videoId = Long.parseLong(uri.getLastPathSegment().split(":")[1]);
+
+      return MediaStore.Video.Thumbnails.getThumbnail(context.getContentResolver(),
+                                                      videoId,
+                                                      MediaStore.Images.Thumbnails.MINI_KIND,
+                                                      null);
+    } else if (uri.toString().startsWith(MediaStore.Video.Media.EXTERNAL_CONTENT_URI.toString())) {
+      long videoId = Long.parseLong(uri.getLastPathSegment());
 
       return MediaStore.Video.Thumbnails.getThumbnail(context.getContentResolver(),
                                                       videoId,

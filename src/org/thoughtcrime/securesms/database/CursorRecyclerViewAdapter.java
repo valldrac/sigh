@@ -71,6 +71,10 @@ public abstract class CursorRecyclerViewAdapter<VH extends RecyclerView.ViewHold
     this.header = header;
   }
 
+  public View getHeaderView() {
+    return this.header;
+  }
+
   public void setFooterView(@Nullable View footer) {
     this.footer = footer;
   }
@@ -118,6 +122,10 @@ public abstract class CursorRecyclerViewAdapter<VH extends RecyclerView.ViewHold
            + getFastAccessSize()
            + (hasHeaderView() ? 1 : 0)
            + (hasFooterView() ? 1 : 0);
+  }
+
+  public int getCursorCount() {
+    return cursor.getCount();
   }
 
   @SuppressWarnings("unchecked")
@@ -186,7 +194,7 @@ public abstract class CursorRecyclerViewAdapter<VH extends RecyclerView.ViewHold
       throw new IllegalStateException("this should only be called when the cursor is valid");
     }
     if (!cursor.moveToPosition(getCursorPosition(position))) {
-      throw new IllegalStateException("couldn't move cursor to position " + position);
+      throw new IllegalStateException("couldn't move cursor to position " + position + " (actual cursor position " + getCursorPosition(position) + ")");
     }
     return cursor;
   }

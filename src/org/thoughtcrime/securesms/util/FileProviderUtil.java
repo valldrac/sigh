@@ -14,8 +14,18 @@ public class FileProviderUtil {
   private static final String AUTHORITY = "org.sigh.app.fileprovider";
 
   public static Uri getUriFor(@NonNull Context context, @NonNull File file) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) return FileProvider.getUriForFile(context, AUTHORITY, file);
-    else                                                       return Uri.fromFile(file);
+    if (Build.VERSION.SDK_INT >= 24) return FileProvider.getUriForFile(context, AUTHORITY, file);
+    else                             return Uri.fromFile(file);
   }
 
+  public static boolean isAuthority(@NonNull Uri uri) {
+    return AUTHORITY.equals(uri.getAuthority());
+  }
+
+  public static boolean delete(@NonNull Context context, @NonNull Uri uri) {
+    if (AUTHORITY.equals(uri.getAuthority())) {
+      return context.getContentResolver().delete(uri, null, null) > 0;
+    }
+    return new File(uri.getPath()).delete();
+  }
 }

@@ -126,14 +126,14 @@ public class PassphraseCreateActivity extends PassphraseActivity {
 
       MasterSecret masterSecret = MasterSecretUtil.generateMasterSecret(context, passphrase);
 
-      if (masterSecret != null) {
-        MasterSecretUtil.generateAsymmetricMasterSecret(context, masterSecret);
-        IdentityKeyUtil.generateIdentityKeys(context, masterSecret);
-        VersionTracker.updateLastSeenVersion(context);
+      MasterSecretUtil.generateAsymmetricMasterSecret(context, masterSecret);
+      IdentityKeyUtil.generateIdentityKeys(context, masterSecret);
+      VersionTracker.updateLastSeenVersion(context);
 
-        TextSecurePreferences.setLastExperienceVersionCode(context, Util.getCurrentApkReleaseVersion(context));
-        TextSecurePreferences.setReadReceiptsEnabled(context, true);
-      }
+      TextSecurePreferences.setLastExperienceVersionCode(context, Util.getCurrentApkReleaseVersion(context));
+      TextSecurePreferences.setReadReceiptsEnabled(context, true);
+      TextSecurePreferences.setTypingIndicatorsEnabled(context, true);
+      TextSecurePreferences.setHasSeenWelcomeScreen(context, false);
 
       return masterSecret;
     }

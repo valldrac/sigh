@@ -1,7 +1,14 @@
 package org.thoughtcrime.securesms.dependencies;
 
 import android.content.Context;
-import android.util.Log;
+
+import org.thoughtcrime.securesms.gcm.FcmService;
+import org.thoughtcrime.securesms.jobs.AttachmentUploadJob;
+import org.thoughtcrime.securesms.jobs.MultiDeviceConfigurationUpdateJob;
+import org.thoughtcrime.securesms.jobs.RefreshUnidentifiedDeliveryAbilityJob;
+import org.thoughtcrime.securesms.jobs.RotateProfileKeyJob;
+import org.thoughtcrime.securesms.jobs.TypingSendJob;
+import org.thoughtcrime.securesms.logging.Log;
 
 import org.greenrobot.eventbus.EventBus;
 import org.thoughtcrime.securesms.BuildConfig;
@@ -13,7 +20,7 @@ import org.thoughtcrime.securesms.jobs.AttachmentDownloadJob;
 import org.thoughtcrime.securesms.jobs.AvatarDownloadJob;
 import org.thoughtcrime.securesms.jobs.CleanPreKeysJob;
 import org.thoughtcrime.securesms.jobs.CreateSignedPreKeyJob;
-import org.thoughtcrime.securesms.jobs.GcmRefreshJob;
+import org.thoughtcrime.securesms.jobs.FcmRefreshJob;
 import org.thoughtcrime.securesms.jobs.MultiDeviceBlockedUpdateJob;
 import org.thoughtcrime.securesms.jobs.MultiDeviceContactUpdateJob;
 import org.thoughtcrime.securesms.jobs.MultiDeviceGroupUpdateJob;
@@ -31,13 +38,14 @@ import org.thoughtcrime.securesms.jobs.RefreshPreKeysJob;
 import org.thoughtcrime.securesms.jobs.RequestGroupInfoJob;
 import org.thoughtcrime.securesms.jobs.RetrieveProfileAvatarJob;
 import org.thoughtcrime.securesms.jobs.RetrieveProfileJob;
+import org.thoughtcrime.securesms.jobs.RotateCertificateJob;
 import org.thoughtcrime.securesms.jobs.RotateSignedPreKeyJob;
+import org.thoughtcrime.securesms.jobs.SendDeliveryReceiptJob;
 import org.thoughtcrime.securesms.jobs.SendReadReceiptJob;
 import org.thoughtcrime.securesms.preferences.AppProtectionPreferenceFragment;
-import org.thoughtcrime.securesms.preferences.SmsMmsPreferenceFragment;
 import org.thoughtcrime.securesms.push.SecurityEventListener;
 import org.thoughtcrime.securesms.push.SignalServiceNetworkAccess;
-import org.thoughtcrime.securesms.service.MessageRetrievalService;
+import org.thoughtcrime.securesms.service.IncomingMessageObserver;
 import org.thoughtcrime.securesms.service.WebRtcCallService;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.whispersystems.libsignal.util.guava.Optional;
@@ -45,6 +53,9 @@ import org.whispersystems.signalservice.api.SignalServiceAccountManager;
 import org.whispersystems.signalservice.api.SignalServiceMessageReceiver;
 import org.whispersystems.signalservice.api.SignalServiceMessageSender;
 import org.whispersystems.signalservice.api.util.CredentialsProvider;
+import org.whispersystems.signalservice.api.util.RealtimeSleepTimer;
+import org.whispersystems.signalservice.api.util.SleepTimer;
+import org.whispersystems.signalservice.api.util.UptimeSleepTimer;
 import org.whispersystems.signalservice.api.websocket.ConnectivityListener;
 
 import dagger.Module;
@@ -57,7 +68,7 @@ import dagger.Provides;
                                      PushMediaSendJob.class,
                                      AttachmentDownloadJob.class,
                                      RefreshPreKeysJob.class,
-                                     MessageRetrievalService.class,
+                                     IncomingMessageObserver.class,
                                      PushNotificationReceiveJob.class,
                                      MultiDeviceContactUpdateJob.class,
                                      MultiDeviceGroupUpdateJob.class,
@@ -65,7 +76,7 @@ import dagger.Provides;
                                      MultiDeviceBlockedUpdateJob.class,
                                      DeviceListFragment.class,
                                      RefreshAttributesJob.class,
-                                     GcmRefreshJob.class,
+                                     FcmRefreshJob.class,
                                      RequestGroupInfoJob.class,
                                      PushGroupUpdateJob.class,
                                      AvatarDownloadJob.class,
@@ -78,7 +89,15 @@ import dagger.Provides;
                                      MultiDeviceProfileKeyUpdateJob.class,
                                      SendReadReceiptJob.class,
                                      MultiDeviceReadReceiptUpdateJob.class,
-                                     AppProtectionPreferenceFragment.class})
+                                     AppProtectionPreferenceFragment.class,
+                                     FcmService.class,
+                                     RotateCertificateJob.class,
+                                     SendDeliveryReceiptJob.class,
+                                     RotateProfileKeyJob.class,
+                                     MultiDeviceConfigurationUpdateJob.class,
+                                     RefreshUnidentifiedDeliveryAbilityJob.class,
+                                     TypingSendJob.class,
+                                     AttachmentUploadJob.class})
 public class SignalCommunicationModule {
 
   private static final String TAG = SignalCommunicationModule.class.getSimpleName();
@@ -113,10 +132,13 @@ public class SignalCommunicationModule {
                                                           new DynamicCredentialsProvider(context),
                                                           new SignalProtocolStoreImpl(context),
                                                           BuildConfig.USER_AGENT,
-                                                          Optional.fromNullable(MessageRetrievalService.getPipe()),
+                                                          TextSecurePreferences.isMultiDevice(context),
+                                                          Optional.fromNullable(IncomingMessageObserver.getPipe()),
+                                                          Optional.fromNullable(IncomingMessageObserver.getUnidentifiedPipe()),
                                                           Optional.of(new SecurityEventListener(context)));
     } else {
-      this.messageSender.setMessagePipe(MessageRetrievalService.getPipe());
+      this.messageSender.setMessagePipe(IncomingMessageObserver.getPipe(), IncomingMessageObserver.getUnidentifiedPipe());
+      this.messageSender.setIsMultiDevice(TextSecurePreferences.isMultiDevice(context));
     }
 
     return this.messageSender;
@@ -125,13 +147,21 @@ public class SignalCommunicationModule {
   @Provides
   synchronized SignalServiceMessageReceiver provideSignalMessageReceiver() {
     if (this.messageReceiver == null) {
+      SleepTimer sleepTimer =  TextSecurePreferences.isFcmDisabled(context) ? new RealtimeSleepTimer(context) : new UptimeSleepTimer();
+
       this.messageReceiver = new SignalServiceMessageReceiver(networkAccess.getConfiguration(context),
                                                               new DynamicCredentialsProvider(context),
                                                               BuildConfig.USER_AGENT,
-                                                              new PipeConnectivityListener());
+                                                              new PipeConnectivityListener(),
+                                                              sleepTimer);
     }
 
     return this.messageReceiver;
+  }
+
+  @Provides
+  synchronized SignalServiceNetworkAccess provideSignalServiceNetworkAccess() {
+    return networkAccess;
   }
 
   private static class DynamicCredentialsProvider implements CredentialsProvider {
@@ -162,12 +192,12 @@ public class SignalCommunicationModule {
 
     @Override
     public void onConnected() {
-      Log.w(TAG, "onConnected()");
+      Log.i(TAG, "onConnected()");
     }
 
     @Override
     public void onConnecting() {
-      Log.w(TAG, "onConnecting()");
+      Log.i(TAG, "onConnecting()");
     }
 
     @Override

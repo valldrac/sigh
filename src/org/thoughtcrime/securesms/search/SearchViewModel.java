@@ -4,10 +4,14 @@ import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.MutableLiveData;
 import android.arch.lifecycle.ViewModel;
 import android.arch.lifecycle.ViewModelProvider;
+import android.database.ContentObserver;
+import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 
 import org.thoughtcrime.securesms.search.model.SearchResult;
 import org.thoughtcrime.securesms.util.Debouncer;
+import org.thoughtcrime.securesms.util.Util;
 
 /**
  * A {@link ViewModel} for handling all the business logic and interactions that take place inside
@@ -19,16 +23,25 @@ import org.thoughtcrime.securesms.util.Debouncer;
  */
 class SearchViewModel extends ViewModel {
 
-  private final ClosingLiveData  searchResult;
-  private final SearchRepository searchRepository;
-  private final Debouncer        debouncer;
+  private final ObservingLiveData searchResult;
+  private final SearchRepository  searchRepository;
+  private final Debouncer         debouncer;
 
   private String lastQuery;
 
-  SearchViewModel(@NonNull SearchRepository searchRepository) {
-    this.searchResult     = new ClosingLiveData();
+  private SearchViewModel(@NonNull SearchRepository searchRepository) {
+    this.searchResult     = new ObservingLiveData();
     this.searchRepository = searchRepository;
     this.debouncer        = new Debouncer(500);
+
+    searchResult.registerContentObserver(new ContentObserver(new Handler()) {
+      @Override
+      public void onChange(boolean selfChange) {
+        if (!TextUtils.isEmpty(getLastQuery())) {
+          searchRepository.query(getLastQuery(), searchResult::postValue);
+        }
+      }
+    });
   }
 
   LiveData<SearchResult> getSearchResult() {
@@ -37,7 +50,15 @@ class SearchViewModel extends ViewModel {
 
   void updateQuery(String query) {
     lastQuery = query;
-    debouncer.publish(() -> searchRepository.query(query, searchResult::postValue));
+    debouncer.publish(() -> searchRepository.query(query, result -> {
+      Util.runOnMain(() -> {
+        if (query.equals(lastQuery)) {
+          searchResult.setValue(result);
+        } else {
+          result.close();
+        }
+      });
+    }));
   }
 
   @NonNull
@@ -54,22 +75,35 @@ class SearchViewModel extends ViewModel {
   /**
    * Ensures that the previous {@link SearchResult} is always closed whenever we set a new one.
    */
-  private static class ClosingLiveData extends MutableLiveData<SearchResult> {
+  private static class ObservingLiveData extends MutableLiveData<SearchResult> {
+
+    private ContentObserver observer;
 
     @Override
     public void setValue(SearchResult value) {
       SearchResult previous = getValue();
+
       if (previous != null) {
+        previous.unregisterContentObserver(observer);
         previous.close();
       }
+
+      value.registerContentObserver(observer);
+
       super.setValue(value);
     }
 
-    public void close() {
+    void close() {
       SearchResult value = getValue();
+
       if (value != null) {
+        value.unregisterContentObserver(observer);
         value.close();
       }
+    }
+
+    void registerContentObserver(@NonNull ContentObserver observer) {
+      this.observer = observer;
     }
   }
 

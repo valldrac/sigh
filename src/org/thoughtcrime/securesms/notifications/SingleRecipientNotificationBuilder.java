@@ -13,7 +13,7 @@ import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationCompat.Action;
 import android.support.v4.app.RemoteInput;
 import android.text.SpannableStringBuilder;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
@@ -22,7 +22,6 @@ import org.thoughtcrime.securesms.contacts.avatars.ContactColors;
 import org.thoughtcrime.securesms.contacts.avatars.ContactPhoto;
 import org.thoughtcrime.securesms.contacts.avatars.FallbackContactPhoto;
 import org.thoughtcrime.securesms.contacts.avatars.GeneratedContactPhoto;
-import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.mms.DecryptableStreamUriLoader;
 import org.thoughtcrime.securesms.mms.GlideApp;
 import org.thoughtcrime.securesms.mms.Slide;
@@ -53,11 +52,17 @@ public class SingleRecipientNotificationBuilder extends AbstractNotificationBuil
 
     setSmallIcon(R.drawable.icon_notification);
     setColor(context.getResources().getColor(R.color.textsecure_primary));
-    setPriority(TextSecurePreferences.getNotificationPriority(context));
     setCategory(NotificationCompat.CATEGORY_MESSAGE);
+
+    if (!NotificationChannels.supported()) {
+      setPriority(TextSecurePreferences.getNotificationPriority(context));
+    }
   }
 
   public void setThread(@NonNull Recipient recipient) {
+    String channelId = recipient.getNotificationChannel();
+    setChannelId(channelId != null ? channelId : NotificationChannels.getMessagesChannel(context));
+
     if (privacy.isDisplayContact()) {
       setContentTitle(recipient.toShortString());
 
@@ -87,7 +92,7 @@ public class SingleRecipientNotificationBuilder extends AbstractNotificationBuil
 
     } else {
       setContentTitle(context.getString(R.string.SingleRecipientNotificationBuilder_signal));
-      setLargeIcon(new GeneratedContactPhoto("Unknown").asDrawable(context, ContactColors.UNKNOWN_COLOR.toConversationColor(context)));
+      setLargeIcon(new GeneratedContactPhoto("Unknown", R.drawable.ic_profile_default).asDrawable(context, ContactColors.UNKNOWN_COLOR.toConversationColor(context)));
     }
   }
 
@@ -259,9 +264,11 @@ public class SingleRecipientNotificationBuilder extends AbstractNotificationBuil
   private CharSequence getBigText(List<CharSequence> messageBodies) {
     SpannableStringBuilder content = new SpannableStringBuilder();
 
-    for (CharSequence message : messageBodies) {
-      content.append(message);
-      content.append('\n');
+    for (int i = 0; i < messageBodies.size(); i++) {
+      content.append(messageBodies.get(i));
+      if (i < messageBodies.size() - 1) {
+        content.append('\n');
+      }
     }
 
     return content;

@@ -11,6 +11,7 @@ import android.support.v13.view.inputmethod.EditorInfoCompat;
 import android.support.v13.view.inputmethod.InputConnectionCompat;
 import android.support.v13.view.inputmethod.InputContentInfoCompat;
 import android.support.v4.os.BuildCompat;
+import android.text.Editable;
 import android.text.InputType;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -19,7 +20,7 @@ import android.text.TextUtils;
 import android.text.TextUtils.TruncateAt;
 import android.text.style.RelativeSizeSpan;
 import android.util.AttributeSet;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 
@@ -33,7 +34,8 @@ public class ComposeText extends EmojiEditText {
   private CharSequence    hint;
   private SpannableString subHint;
 
-  @Nullable private InputPanel.MediaListener mediaListener;
+  @Nullable private InputPanel.MediaListener      mediaListener;
+  @Nullable private CursorPositionChangedListener cursorPositionChangedListener;
 
   public ComposeText(Context context) {
     super(context);
@@ -66,6 +68,15 @@ public class ComposeText extends EmojiEditText {
       } else {
         setHint(ellipsizeToWidth(hint));
       }
+    }
+  }
+
+  @Override
+  protected void onSelectionChanged(int selStart, int selEnd) {
+    super.onSelectionChanged(selStart, selEnd);
+
+    if (cursorPositionChangedListener != null) {
+      cursorPositionChangedListener.onCursorPositionChanged(selStart, selEnd);
     }
   }
 
@@ -102,6 +113,10 @@ public class ComposeText extends EmojiEditText {
 
     append(invite);
     setSelection(getText().length());
+  }
+
+  public void setCursorPositionChangedListener(@Nullable CursorPositionChangedListener listener) {
+    this.cursorPositionChangedListener = listener;
   }
 
   private boolean isLandscape() {
@@ -159,7 +174,7 @@ public class ComposeText extends EmojiEditText {
   @RequiresApi(api = Build.VERSION_CODES.HONEYCOMB_MR2)
   private static class CommitContentListener implements InputConnectionCompat.OnCommitContentListener {
 
-    private static final String TAG = CommitContentListener.class.getName();
+    private static final String TAG = CommitContentListener.class.getSimpleName();
 
     private final InputPanel.MediaListener mediaListener;
 
@@ -189,4 +204,7 @@ public class ComposeText extends EmojiEditText {
     }
   }
 
+  public interface CursorPositionChangedListener {
+    void onCursorPositionChanged(int start, int end);
+  }
 }

@@ -26,10 +26,7 @@ import org.thoughtcrime.securesms.contacts.ContactsDatabase;
 import org.thoughtcrime.securesms.crypto.AttachmentSecret;
 import org.thoughtcrime.securesms.crypto.AttachmentSecretProvider;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
-import org.thoughtcrime.securesms.database.helpers.ClassicOpenHelper;
-import org.thoughtcrime.securesms.database.helpers.SQLCipherMigrationHelper;
 import org.thoughtcrime.securesms.database.helpers.SQLCipherOpenHelper;
-import org.thoughtcrime.securesms.util.TextSecurePreferences;
 
 public class DatabaseFactory {
 
@@ -55,7 +52,6 @@ public class DatabaseFactory {
   private final SignedPreKeyDatabase  signedPreKeyDatabase;
   private final SessionDatabase       sessionDatabase;
   private final SearchDatabase        searchDatabase;
-  private final JobQueueDatabase      jobQueueDatabase;
 
   public static DatabaseFactory getInstance(Context context) {
     synchronized (lock) {
@@ -134,10 +130,6 @@ public class DatabaseFactory {
     return getInstance(context).searchDatabase;
   }
 
-  public static JobQueueDatabase getJobQueueDatabase(Context context) {
-    return getInstance(context).jobQueueDatabase;
-  }
-
   public static SQLiteDatabase getBackupDatabase(Context context) {
     return getInstance(context).databaseHelper.getReadableDatabase();
   }
@@ -145,6 +137,10 @@ public class DatabaseFactory {
   public static void upgradeRestored(Context context, SQLiteDatabase database){
     getInstance(context).databaseHelper.onUpgrade(database, database.getVersion(), -1);
     getInstance(context).databaseHelper.markCurrent(database);
+  }
+
+  public void doThing(Context context) {
+    getInstance(context).databaseHelper.getReadableDatabase().execSQL("ALTER TABLE mms ADD COLUMN previews TEXT");
   }
 
   private DatabaseFactory(@NonNull Context context) {
@@ -170,31 +166,12 @@ public class DatabaseFactory {
     this.signedPreKeyDatabase = new SignedPreKeyDatabase(context, databaseHelper);
     this.sessionDatabase      = new SessionDatabase(context, databaseHelper);
     this.searchDatabase       = new SearchDatabase(context, databaseHelper);
-    this.jobQueueDatabase     = new JobQueueDatabase(context, databaseHelper);
   }
 
   public void onApplicationLevelUpgrade(@NonNull Context context, @NonNull MasterSecret masterSecret,
                                         int fromVersion, DatabaseUpgradeActivity.DatabaseUpgradeListener listener)
   {
     databaseHelper.getWritableDatabase();
-
-    ClassicOpenHelper legacyOpenHelper = null;
-
-    if (fromVersion < DatabaseUpgradeActivity.ASYMMETRIC_MASTER_SECRET_FIX_VERSION) {
-      legacyOpenHelper = new ClassicOpenHelper(context);
-      legacyOpenHelper.onApplicationLevelUpgrade(context, masterSecret, fromVersion, listener);
-    }
-
-    if (fromVersion < DatabaseUpgradeActivity.SQLCIPHER && TextSecurePreferences.getNeedsSqlCipherMigration(context)) {
-      if (legacyOpenHelper == null) {
-        legacyOpenHelper = new ClassicOpenHelper(context);
-      }
-
-      SQLCipherMigrationHelper.migrateCiphertext(context, masterSecret,
-                                                 legacyOpenHelper.getWritableDatabase(),
-                                                 databaseHelper.getWritableDatabase(),
-                                                 listener);
-    }
   }
 
 }

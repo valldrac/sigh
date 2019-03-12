@@ -5,9 +5,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
+import org.thoughtcrime.securesms.jobmanager.requirements.RequirementListener;
+import org.thoughtcrime.securesms.jobmanager.requirements.RequirementProvider;
 import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.thoughtcrime.securesms.jobqueue.requirements.RequirementListener;
-import org.thoughtcrime.securesms.jobqueue.requirements.RequirementProvider;
 
 public class MasterSecretRequirementProvider implements RequirementProvider {
 

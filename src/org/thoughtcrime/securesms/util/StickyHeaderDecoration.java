@@ -7,7 +7,6 @@ import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.RecyclerView.ViewHolder;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -20,7 +19,7 @@ import java.util.Map;
  */
 public class StickyHeaderDecoration extends RecyclerView.ItemDecoration {
 
-  private static final String TAG = StickyHeaderDecoration.class.getName();
+  private static final String TAG = StickyHeaderDecoration.class.getSimpleName();
 
   private static final long NO_HEADER_ID = -1L;
 
@@ -77,30 +76,30 @@ public class StickyHeaderDecoration extends RecyclerView.ItemDecoration {
   protected ViewHolder getHeader(RecyclerView parent, StickyHeaderAdapter adapter, int position) {
     final long key = adapter.getHeaderId(position);
 
-    if (headerCache.containsKey(key)) {
-      return headerCache.get(key);
-    } else {
-      final ViewHolder holder = adapter.onCreateHeaderViewHolder(parent);
-      final View header = holder.itemView;
+    ViewHolder headerHolder = headerCache.get(key);
+    if (headerHolder == null) {
+      headerHolder = adapter.onCreateHeaderViewHolder(parent);
 
       //noinspection unchecked
-      adapter.onBindHeaderViewHolder(holder, position);
+      adapter.onBindHeaderViewHolder(headerHolder, position);
 
-      int widthSpec = View.MeasureSpec.makeMeasureSpec(parent.getWidth(), View.MeasureSpec.EXACTLY);
-      int heightSpec = View.MeasureSpec.makeMeasureSpec(parent.getHeight(), View.MeasureSpec.UNSPECIFIED);
-
-      int childWidth = ViewGroup.getChildMeasureSpec(widthSpec,
-                                                     parent.getPaddingLeft() + parent.getPaddingRight(), header.getLayoutParams().width);
-      int childHeight = ViewGroup.getChildMeasureSpec(heightSpec,
-                                                      parent.getPaddingTop() + parent.getPaddingBottom(), header.getLayoutParams().height);
-
-      header.measure(childWidth, childHeight);
-      header.layout(0, 0, header.getMeasuredWidth(), header.getMeasuredHeight());
-
-      headerCache.put(key, holder);
-
-      return holder;
+      headerCache.put(key, headerHolder);
     }
+
+    final View header = headerHolder.itemView;
+
+    int widthSpec   = View.MeasureSpec.makeMeasureSpec(parent.getWidth(), View.MeasureSpec.EXACTLY);
+    int heightSpec  = View.MeasureSpec.makeMeasureSpec(parent.getHeight(), View.MeasureSpec.UNSPECIFIED);
+
+    int childWidth  = ViewGroup.getChildMeasureSpec(widthSpec,
+                                                    parent.getPaddingLeft() + parent.getPaddingRight(), header.getLayoutParams().width);
+    int childHeight = ViewGroup.getChildMeasureSpec(heightSpec,
+                                                    parent.getPaddingTop() + parent.getPaddingBottom(), header.getLayoutParams().height);
+
+    header.measure(childWidth, childHeight);
+    header.layout(0, 0, header.getMeasuredWidth(), header.getMeasuredHeight());
+
+    return headerHolder;
   }
 
   /**

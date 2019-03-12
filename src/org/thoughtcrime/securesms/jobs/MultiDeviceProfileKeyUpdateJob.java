@@ -2,14 +2,17 @@ package org.thoughtcrime.securesms.jobs;
 
 
 import android.content.Context;
-import android.util.Log;
+import android.support.annotation.NonNull;
+
+import org.thoughtcrime.securesms.jobmanager.SafeData;
+import org.thoughtcrime.securesms.logging.Log;
 
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.crypto.ProfileKeyUtil;
+import org.thoughtcrime.securesms.crypto.UnidentifiedAccessUtil;
 import org.thoughtcrime.securesms.dependencies.InjectableType;
+import org.thoughtcrime.securesms.jobmanager.JobParameters;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.thoughtcrime.securesms.jobqueue.JobParameters;
-import org.thoughtcrime.securesms.jobqueue.requirements.NetworkRequirement;
 import org.whispersystems.libsignal.util.guava.Optional;
 import org.whispersystems.signalservice.api.SignalServiceMessageSender;
 import org.whispersystems.signalservice.api.crypto.UntrustedIdentityException;
@@ -27,25 +30,40 @@ import java.io.IOException;
 
 import javax.inject.Inject;
 
-public class MultiDeviceProfileKeyUpdateJob extends MasterSecretJob implements InjectableType {
+import androidx.work.Data;
+import androidx.work.WorkerParameters;
+
+public class MultiDeviceProfileKeyUpdateJob extends ContextJob implements InjectableType {
 
   private static final long serialVersionUID = 1L;
   private static final String TAG = MultiDeviceProfileKeyUpdateJob.class.getSimpleName();
 
   @Inject transient SignalServiceMessageSender messageSender;
 
+  public MultiDeviceProfileKeyUpdateJob(@NonNull Context context, @NonNull WorkerParameters workerParameters) {
+    super(context, workerParameters);
+  }
+
   public MultiDeviceProfileKeyUpdateJob(Context context) {
     super(context, JobParameters.newBuilder()
-                                .withRequirement(new NetworkRequirement(context))
-                                .withPersistence()
+                                .withNetworkRequirement()
                                 .withGroupId(MultiDeviceProfileKeyUpdateJob.class.getSimpleName())
                                 .create());
   }
 
   @Override
-  public void onRun(MasterSecret masterSecret) throws IOException, UntrustedIdentityException {
+  protected void initialize(@NonNull SafeData data) {
+  }
+
+  @Override
+  protected @NonNull Data serialize(@NonNull Data.Builder dataBuilder) {
+    return dataBuilder.build();
+  }
+
+  @Override
+  public void onRun() throws IOException, UntrustedIdentityException {
     if (!TextSecurePreferences.isMultiDevice(getContext())) {
-      Log.w(TAG, "Not multi device...");
+      Log.i(TAG, "Not multi device...");
       return;
     }
 
@@ -70,18 +88,13 @@ public class MultiDeviceProfileKeyUpdateJob extends MasterSecretJob implements I
 
     SignalServiceSyncMessage      syncMessage      = SignalServiceSyncMessage.forContacts(new ContactsMessage(attachmentStream, false));
 
-    messageSender.sendMessage(syncMessage);
+    messageSender.sendMessage(syncMessage, UnidentifiedAccessUtil.getAccessForSync(context));
   }
 
   @Override
-  public boolean onShouldRetryThrowable(Exception exception) {
+  public boolean onShouldRetry(Exception exception) {
     if (exception instanceof PushNetworkException) return true;
     return false;
-  }
-
-  @Override
-  public void onAdded() {
-
   }
 
   @Override

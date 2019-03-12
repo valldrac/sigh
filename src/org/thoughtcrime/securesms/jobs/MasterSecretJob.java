@@ -1,14 +1,21 @@
 package org.thoughtcrime.securesms.jobs;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 
 import org.thoughtcrime.securesms.crypto.MasterSecret;
+import org.thoughtcrime.securesms.jobmanager.JobParameters;
 import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.thoughtcrime.securesms.jobqueue.JobParameters;
+
+import androidx.work.WorkerParameters;
 
 public abstract class MasterSecretJob extends ContextJob {
 
-  public MasterSecretJob(Context context, JobParameters parameters) {
+  public MasterSecretJob(@NonNull Context context, @NonNull WorkerParameters workerParameters) {
+    super(context, workerParameters);
+  }
+
+  public MasterSecretJob(@NonNull Context context, @NonNull JobParameters parameters) {
     super(context, parameters);
   }
 

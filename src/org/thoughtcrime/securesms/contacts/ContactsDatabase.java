@@ -19,12 +19,13 @@ package org.thoughtcrime.securesms.contacts;
 import android.accounts.Account;
 import android.annotation.SuppressLint;
 import android.content.ContentProviderOperation;
-import android.content.ContentProviderResult;
-import android.content.ContentUris;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.OperationApplicationException;
 import android.database.Cursor;
 import android.database.CursorWrapper;
+import android.database.MatrixCursor;
+import android.database.MergeCursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.RemoteException;
@@ -34,12 +35,12 @@ import android.provider.ContactsContract.RawContacts;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.Pair;
 
-import org.thoughtcrime.securesms.ContactSelectionListFragment;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.database.Address;
+import org.thoughtcrime.securesms.logging.Log;
+import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.thoughtcrime.securesms.util.Util;
 import org.whispersystems.libsignal.util.guava.Optional;
 
@@ -92,7 +93,7 @@ public class ContactsDatabase {
     try (Cursor cursor = context.getContentResolver().query(currentContactsUri, projection, RawContacts.DELETED + " = ?", new String[] {"1"}, null)) {
       while (cursor != null && cursor.moveToNext()) {
         long rawContactId = cursor.getLong(0);
-        Log.w(TAG, "Deleting raw contact: " + cursor.getString(1) + ", " + rawContactId);
+        Log.i(TAG, "Deleting raw contact: " + cursor.getString(1) + ", " + rawContactId);
 
         context.getContentResolver().delete(currentContactsUri, RawContacts._ID + " = ?", new String[] {String.valueOf(rawContactId)});
       }
@@ -104,43 +105,48 @@ public class ContactsDatabase {
                                               boolean remove)
       throws RemoteException, OperationApplicationException
   {
-    Set<Address>                        registeredAddressSet = new HashSet<>();
+    Set<Address>                        registeredAddressSet = new HashSet<>(registeredAddressList);
     ArrayList<ContentProviderOperation> operations           = new ArrayList<>();
     Map<Address, SignalContact>         currentContacts      = getSignalRawContacts(account);
+    List<List<Address>>                 registeredChunks     = Util.chunk(registeredAddressList, 50);
 
-    for (Address registeredAddress : registeredAddressList) {
-      registeredAddressSet.add(registeredAddress);
+    for (List<Address> registeredChunk : registeredChunks) {
+      for (Address registeredAddress : registeredChunk) {
+        if (!currentContacts.containsKey(registeredAddress)) {
+          Optional<SystemContactInfo> systemContactInfo = getSystemContactInfo(registeredAddress);
 
-      if (!currentContacts.containsKey(registeredAddress)) {
-        Optional<SystemContactInfo> systemContactInfo = getSystemContactInfo(registeredAddress);
-
-        if (systemContactInfo.isPresent()) {
-          Log.w(TAG, "Adding number: " + registeredAddress);
-          addTextSecureRawContact(operations, account, systemContactInfo.get().number,
-                                  systemContactInfo.get().name, systemContactInfo.get().id);
+          if (systemContactInfo.isPresent()) {
+            Log.i(TAG, "Adding number: " + registeredAddress);
+            addTextSecureRawContact(operations, account, systemContactInfo.get().number,
+                                    systemContactInfo.get().name, systemContactInfo.get().id);
+          }
         }
+      }
+      if (!operations.isEmpty()) {
+        context.getContentResolver().applyBatch(ContactsContract.AUTHORITY, operations);
+        operations.clear();
       }
     }
 
     for (Map.Entry<Address, SignalContact> currentContactEntry : currentContacts.entrySet()) {
       if (!registeredAddressSet.contains(currentContactEntry.getKey())) {
         if (remove) {
-          Log.w(TAG, "Removing number: " + currentContactEntry.getKey());
+          Log.i(TAG, "Removing number: " + currentContactEntry.getKey());
           removeTextSecureRawContact(operations, account, currentContactEntry.getValue().getId());
         }
       } else if (!currentContactEntry.getValue().isVoiceSupported()) {
-        Log.w(TAG, "Adding voice support: " + currentContactEntry.getKey());
+        Log.i(TAG, "Adding voice support: " + currentContactEntry.getKey());
         addContactVoiceSupport(operations, currentContactEntry.getKey(), currentContactEntry.getValue().getId());
       } else if (!Util.isStringEquals(currentContactEntry.getValue().getRawDisplayName(),
                                       currentContactEntry.getValue().getAggregateDisplayName()))
       {
-        Log.w(TAG, "Updating display name: " + currentContactEntry.getKey());
+        Log.i(TAG, "Updating display name: " + currentContactEntry.getKey());
         updateDisplayName(operations, currentContactEntry.getValue().getAggregateDisplayName(), currentContactEntry.getValue().getId(), currentContactEntry.getValue().getDisplayNameSource());
       }
     }
 
     if (!operations.isEmpty()) {
-      context.getContentResolver().applyBatch(ContactsContract.AUTHORITY, operations);
+      applyOperationsInBatches(context.getContentResolver(), ContactsContract.AUTHORITY, operations, 50);
     }
   }
 
@@ -219,6 +225,25 @@ public class ContactsDatabase {
                                                   new String[] {CONTACT_MIMETYPE,
                                                                 "%" + filter + "%", "%" + filter + "%"},
                                                   sort);
+
+      if (context.getString(R.string.note_to_self).toLowerCase().contains(filter.toLowerCase())) {
+        Optional<SystemContactInfo> self      = getSystemContactInfo(Address.fromSerialized(TextSecurePreferences.getLocalNumber(context)));
+        boolean                     shouldAdd = true;
+
+        if (self.isPresent()) {
+          boolean nameMatch   = self.get().name != null && self.get().name.toLowerCase().contains(filter.toLowerCase());
+          boolean numberMatch = self.get().number != null && self.get().number.contains(filter);
+
+          shouldAdd = !nameMatch && !numberMatch;
+        }
+
+        if (shouldAdd) {
+          MatrixCursor selfCursor = new MatrixCursor(projection);
+          selfCursor.addRow(new Object[]{ context.getString(R.string.note_to_self), TextSecurePreferences.getLocalNumber(context)});
+
+          cursor = cursor == null ? selfCursor : new MergeCursor(new Cursor[]{ cursor, selfCursor });
+        }
+      }
     }
 
     return new ProjectionMappingCursor(cursor, projectionMap,
@@ -532,6 +557,18 @@ public class ContactsDatabase {
       }
     } finally {
       if (cursor != null) cursor.close();
+    }
+  }
+
+  private void applyOperationsInBatches(@NonNull ContentResolver contentResolver,
+                                        @NonNull String authority,
+                                        @NonNull List<ContentProviderOperation> operations,
+                                        int batchSize)
+      throws OperationApplicationException, RemoteException
+  {
+    List<List<ContentProviderOperation>> batches = Util.chunk(operations, batchSize);
+    for (List<ContentProviderOperation> batch : batches) {
+      contentResolver.applyBatch(authority, new ArrayList<>(batch));
     }
   }
 

@@ -3,6 +3,7 @@ package org.thoughtcrime.securesms.search;
 import android.annotation.SuppressLint;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -11,13 +12,12 @@ import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import org.thoughtcrime.securesms.ConversationActivity;
+import org.thoughtcrime.securesms.conversation.ConversationActivity;
 import org.thoughtcrime.securesms.ConversationListActivity;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.contacts.ContactAccessor;
@@ -41,8 +41,9 @@ public class SearchFragment extends Fragment implements SearchListAdapter.EventL
   public static final String TAG          = "SearchFragment";
   public static final String EXTRA_LOCALE = "locale";
 
-  private TextView     noResultsView;
-  private RecyclerView listView;
+  private TextView               noResultsView;
+  private RecyclerView           listView;
+  private StickyHeaderDecoration listDecoration;
 
   private SearchViewModel   viewModel;
   private SearchListAdapter listAdapter;
@@ -90,10 +91,12 @@ public class SearchFragment extends Fragment implements SearchListAdapter.EventL
     noResultsView = view.findViewById(R.id.search_no_results);
     listView      = view.findViewById(R.id.search_list);
 
-    listAdapter = new SearchListAdapter(GlideApp.with(this), this, locale);
+    listAdapter    = new SearchListAdapter(GlideApp.with(this), this, locale);
+    listDecoration = new StickyHeaderDecoration(listAdapter, false, false);
+
     listView.setAdapter(listAdapter);
+    listView.addItemDecoration(listDecoration);
     listView.setLayoutManager(new LinearLayoutManager(getContext()));
-    listView.addItemDecoration(new StickyHeaderDecoration(listAdapter, false, false));
   }
 
   @Override
@@ -159,7 +162,7 @@ public class SearchFragment extends Fragment implements SearchListAdapter.EventL
         ConversationListActivity conversationList = (ConversationListActivity) getActivity();
         if (conversationList != null) {
           conversationList.openConversation(message.threadId,
-                                            message.recipient,
+                                            message.conversationRecipient,
                                             ThreadDatabase.DistributionTypes.DEFAULT,
                                             -1,
                                             startingPosition);

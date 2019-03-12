@@ -4,7 +4,7 @@ package org.thoughtcrime.securesms.webrtc;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 
 import org.thoughtcrime.securesms.util.concurrent.SettableFuture;
 import org.webrtc.AudioSource;
@@ -14,6 +14,7 @@ import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
 import org.webrtc.CameraVideoCapturer;
 import org.webrtc.DataChannel;
+import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
@@ -21,7 +22,8 @@ import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
-import org.webrtc.VideoRenderer;
+import org.webrtc.SurfaceTextureHelper;
+import org.webrtc.VideoSink;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
@@ -49,9 +51,10 @@ public class PeerConnectionWrapper {
   public PeerConnectionWrapper(@NonNull Context                        context,
                                @NonNull PeerConnectionFactory          factory,
                                @NonNull PeerConnection.Observer        observer,
-                               @NonNull VideoRenderer.Callbacks        localRenderer,
+                               @NonNull VideoSink                      localRenderer,
                                @NonNull List<PeerConnection.IceServer> turnServers,
                                @NonNull CameraEventListener            cameraEventListener,
+                               @NonNull EglBase                        eglBase,
                                boolean                                 hideIp)
   {
     List<PeerConnection.IceServer> iceServers = new LinkedList<>();
@@ -85,10 +88,12 @@ public class PeerConnectionWrapper {
     this.camera = new Camera(context, cameraEventListener);
 
     if (camera.capturer != null) {
-      this.videoSource = factory.createVideoSource(camera.capturer);
+      this.videoSource = factory.createVideoSource(false);
       this.videoTrack = factory.createVideoTrack("ARDAMSv0", videoSource);
 
-      this.videoTrack.addRenderer(new VideoRenderer(localRenderer));
+      camera.capturer.initialize(SurfaceTextureHelper.create("WebRTC-SurfaceTextureHelper", eglBase.getEglBaseContext()), context, videoSource.getCapturerObserver());
+
+      this.videoTrack.addSink(localRenderer);
       this.videoTrack.setEnabled(false);
       mediaStream.addTrack(videoTrack);
     } else {
@@ -394,7 +399,7 @@ public class PeerConnectionWrapper {
         Log.w(TAG, "Camera2Enumator.isSupport() threw.", throwable);
       }
 
-      Log.w(TAG, "Camera2 enumerator supported: " + camera2EnumeratorIsSupported);
+      Log.i(TAG, "Camera2 enumerator supported: " + camera2EnumeratorIsSupported);
 
       return camera2EnumeratorIsSupported ? new Camera2Enumerator(context)
                                           : new Camera1Enumerator(true);

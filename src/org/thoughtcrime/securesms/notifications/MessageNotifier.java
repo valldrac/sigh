@@ -18,6 +18,7 @@ package org.thoughtcrime.securesms.notifications;
 
 import android.annotation.SuppressLint;
 import android.app.AlarmManager;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -33,13 +34,13 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.service.notification.StatusBarNotification;
 import android.support.annotation.NonNull;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.text.TextUtils;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 
-import org.thoughtcrime.securesms.ConversationActivity;
+import org.thoughtcrime.securesms.conversation.ConversationActivity;
 import org.thoughtcrime.securesms.R;
-import org.thoughtcrime.securesms.components.emoji.EmojiStrings;
 import org.thoughtcrime.securesms.contactshare.ContactUtil;
 import org.thoughtcrime.securesms.contactshare.Contact;
 import org.thoughtcrime.securesms.database.DatabaseFactory;
@@ -51,8 +52,8 @@ import org.thoughtcrime.securesms.database.model.MessageRecord;
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord;
 import org.thoughtcrime.securesms.mms.SlideDeck;
 import org.thoughtcrime.securesms.recipients.Recipient;
+import org.thoughtcrime.securesms.service.IncomingMessageObserver;
 import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.thoughtcrime.securesms.service.MessageRetrievalService;
 import org.thoughtcrime.securesms.util.ServiceUtil;
 import org.thoughtcrime.securesms.util.SpanUtil;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
@@ -164,7 +165,7 @@ public class MessageNotifier {
           if (notification.getId() != SUMMARY_NOTIFICATION_ID &&
               notification.getId() != CallNotificationBuilder.WEBRTC_NOTIFICATION   &&
               notification.getId() != KeyCachingService.SERVICE_RUNNING_ID          &&
-              notification.getId() != MessageRetrievalService.FOREGROUND_ID         &&
+              notification.getId() != IncomingMessageObserver.FOREGROUND_ID         &&
               notification.getId() != PENDING_MESSAGES_ID)
           {
             for (NotificationItem item : notificationState.getNotifications()) {
@@ -197,7 +198,7 @@ public class MessageNotifier {
   public static void updateNotification(@NonNull Context context, long threadId)
   {
     if (System.currentTimeMillis() - lastDesktopActivityTimestamp < DESKTOP_ACTIVITY_PERIOD) {
-      Log.w(TAG, "Scheduling delayed notification...");
+      Log.i(TAG, "Scheduling delayed notification...");
       executor.execute(new DelayedNotification(context, threadId));
     } else {
       updateNotification(context, threadId, true);
@@ -296,8 +297,11 @@ public class MessageNotifier {
                                                    @NonNull  NotificationState notificationState,
                                                    boolean signal, boolean bundled)
   {
+    Log.i(TAG, "sendSingleThreadNotification()  signal: " + signal + "  bundled: " + bundled);
+
     if (notificationState.getNotifications().isEmpty()) {
       if (!bundled) cancelActiveNotifications(context);
+      Log.i(TAG, "Empty notification state. Skipping.");
       return;
     }
 
@@ -312,8 +316,9 @@ public class MessageNotifier {
     builder.setPrimaryMessageBody(recipient, notifications.get(0).getIndividualRecipient(),
                                   notifications.get(0).getText(), notifications.get(0).getSlideDeck());
     builder.setContentIntent(notifications.get(0).getPendingIntent(context));
-    builder.setGroup(NOTIFICATION_GROUP);
     builder.setDeleteIntent(notificationState.getDeleteIntent(context));
+    builder.setOnlyAlertOnce(!signal);
+    builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY);
 
     long timestamp = notifications.get(0).getTimestamp();
     if (timestamp != 0) builder.setWhen(timestamp);
@@ -333,22 +338,27 @@ public class MessageNotifier {
     }
 
     if (signal) {
-      builder.setAlarms(notificationState.getRingtone(), notificationState.getVibrate());
+      builder.setAlarms(notificationState.getRingtone(context), notificationState.getVibrate());
       builder.setTicker(notifications.get(0).getIndividualRecipient(),
                         notifications.get(0).getText());
     }
 
-    if (!bundled) {
-      builder.setGroupSummary(true);
+    if (bundled) {
+      builder.setGroup(NOTIFICATION_GROUP);
+      builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY);
     }
 
-    NotificationManagerCompat.from(context).notify(notificationId, builder.build());
+    Notification notification = builder.build();
+    NotificationManagerCompat.from(context).notify(notificationId, notification);
+    Log.i(TAG, "Posted notification. " + notification.toString());
   }
 
   private static void sendMultipleThreadNotification(@NonNull  Context context,
                                                      @NonNull  NotificationState notificationState,
                                                      boolean signal)
   {
+    Log.i(TAG, "sendMultiThreadNotification()  signal: " + signal);
+
     MultipleRecipientNotificationBuilder builder       = new MultipleRecipientNotificationBuilder(context, TextSecurePreferences.getNotificationPrivacy(context));
     List<NotificationItem>               notifications = notificationState.getNotifications();
 
@@ -356,6 +366,8 @@ public class MessageNotifier {
     builder.setMostRecentSender(notifications.get(0).getIndividualRecipient());
     builder.setGroup(NOTIFICATION_GROUP);
     builder.setDeleteIntent(notificationState.getDeleteIntent(context));
+    builder.setOnlyAlertOnce(!signal);
+    builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY);
 
     long timestamp = notifications.get(0).getTimestamp();
     if (timestamp != 0) builder.setWhen(timestamp);
@@ -370,12 +382,14 @@ public class MessageNotifier {
     }
 
     if (signal) {
-      builder.setAlarms(notificationState.getRingtone(), notificationState.getVibrate());
+      builder.setAlarms(notificationState.getRingtone(context), notificationState.getVibrate());
       builder.setTicker(notifications.get(0).getIndividualRecipient(),
                         notifications.get(0).getText());
     }
 
+    Notification notification = builder.build();
     NotificationManagerCompat.from(context).notify(SUMMARY_NOTIFICATION_ID, builder.build());
+    Log.i(TAG, "Posted notification. " + notification.toString());
   }
 
   private static void sendInThreadNotification(Context context, Recipient recipient) {
@@ -385,10 +399,13 @@ public class MessageNotifier {
       return;
     }
 
-    Uri uri = recipient != null ? recipient.resolve().getMessageRingtone() : null;
+    Uri uri = null;
+    if (recipient != null) {
+      uri = NotificationChannels.supported() ? NotificationChannels.getMessageRingtone(context, recipient) : recipient.getMessageRingtone();
+    }
 
     if (uri == null) {
-      uri = TextSecurePreferences.getNotificationRingtone(context);
+      uri = NotificationChannels.supported() ? NotificationChannels.getMessageRingtone(context) : TextSecurePreferences.getNotificationRingtone(context);
     }
 
     if (uri.toString().isEmpty()) {
@@ -441,26 +458,16 @@ public class MessageNotifier {
       if (KeyCachingService.isLocked()) {
         body = SpanUtil.italic(context.getString(R.string.MessageNotifier_locked_message));
       } else if (record.isMms() && !((MmsMessageRecord) record).getSharedContacts().isEmpty()) {
-        Contact contact     = ((MmsMessageRecord) record).getSharedContacts().get(0);
-        String  contactName = ContactUtil.getDisplayName(contact);
-
-        if (!TextUtils.isEmpty(contactName)) {
-          body = context.getString(R.string.MessageNotifier_contact_message, EmojiStrings.BUST_IN_SILHOUETTE, contactName);
-        } else {
-          body = SpanUtil.italic(context.getString(R.string.MessageNotifier_unknown_contact_message));
-        }
-      } else if (record.isMms() && TextUtils.isEmpty(body)) {
+        Contact contact = ((MmsMessageRecord) record).getSharedContacts().get(0);
+        body = ContactUtil.getStringSummary(context, contact);
+      } else if (record.isMms() && TextUtils.isEmpty(body) && !((MmsMessageRecord) record).getSlideDeck().getSlides().isEmpty()) {
         body = SpanUtil.italic(context.getString(R.string.MessageNotifier_media_message));
         slideDeck = ((MediaMmsMessageRecord)record).getSlideDeck();
-      } else if (record.isMms() && !record.isMmsNotification()) {
+      } else if (record.isMms() && !record.isMmsNotification() && !((MmsMessageRecord) record).getSlideDeck().getSlides().isEmpty()) {
         String message      = context.getString(R.string.MessageNotifier_media_message_with_text, body);
         int    italicLength = message.length() - body.length();
         body = SpanUtil.italic(message, italicLength);
         slideDeck = ((MediaMmsMessageRecord)record).getSlideDeck();
-      }
-
-      if (record.isMms() && ((MmsMessageRecord) record).getQuote() != null && ((MmsMessageRecord) record).getSlideDeck().getSlides().isEmpty()) {
-        body = record.getDisplayBody();
       }
 
       if (threadRecipients == null || !threadRecipients.isMuted()) {
@@ -542,17 +549,15 @@ public class MessageNotifier {
 
     @Override
     public void run() {
-      MessageNotifier.updateNotification(context);
-
       long delayMillis = delayUntil - System.currentTimeMillis();
-      Log.w(TAG, "Waiting to notify: " + delayMillis);
+      Log.i(TAG, "Waiting to notify: " + delayMillis);
 
       if (delayMillis > 0) {
         Util.sleep(delayMillis);
       }
 
       if (!canceled.get()) {
-        Log.w(TAG, "Not canceled, notifying...");
+        Log.i(TAG, "Not canceled, notifying...");
         MessageNotifier.updateNotification(context, threadId, true);
         MessageNotifier.cancelDelayedNotifications();
       } else {

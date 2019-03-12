@@ -17,29 +17,43 @@
 package org.thoughtcrime.securesms.jobs;
 
 import android.content.Context;
-import android.util.Log;
+import android.support.annotation.NonNull;
 
 import org.thoughtcrime.securesms.database.DatabaseFactory;
+import org.thoughtcrime.securesms.jobmanager.JobParameters;
+import org.thoughtcrime.securesms.jobmanager.SafeData;
+import org.thoughtcrime.securesms.logging.Log;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.thoughtcrime.securesms.jobqueue.Job;
-import org.thoughtcrime.securesms.jobqueue.JobParameters;
 
-public class TrimThreadJob extends Job {
+import androidx.work.Data;
+import androidx.work.WorkerParameters;
+
+public class TrimThreadJob extends ContextJob {
 
   private static final String TAG = TrimThreadJob.class.getSimpleName();
 
-  private final Context context;
-  private final long    threadId;
+  private static final String KEY_THREAD_ID = "thread_id";
+
+  private long threadId;
+
+  public TrimThreadJob(@NonNull Context context, @NonNull WorkerParameters workerParameters) {
+    super(context, workerParameters);
+  }
 
   public TrimThreadJob(Context context, long threadId) {
-    super(JobParameters.newBuilder().withGroupId(TrimThreadJob.class.getSimpleName()).create());
+    super(context, JobParameters.newBuilder().withGroupId(TrimThreadJob.class.getSimpleName()).create());
     this.context  = context;
     this.threadId = threadId;
   }
 
   @Override
-  public void onAdded() {
+  protected void initialize(@NonNull SafeData data) {
+    threadId = data.getLong(KEY_THREAD_ID);
+  }
 
+  @Override
+  protected @NonNull Data serialize(@NonNull Data.Builder dataBuilder) {
+    return dataBuilder.putLong(KEY_THREAD_ID, threadId).build();
   }
 
   @Override

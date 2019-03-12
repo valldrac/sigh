@@ -10,6 +10,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.preference.CheckBoxPreference;
 import android.support.v7.preference.Preference;
+import android.view.View;
 import android.widget.Toast;
 
 import org.thoughtcrime.securesms.ApplicationContext;
@@ -20,9 +21,12 @@ import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.components.SwitchPreferenceCompat;
 import org.thoughtcrime.securesms.crypto.MasterSecretUtil;
 import org.thoughtcrime.securesms.dependencies.InjectableType;
+import org.thoughtcrime.securesms.jobs.MultiDeviceConfigurationUpdateJob;
 import org.thoughtcrime.securesms.jobs.MultiDeviceReadReceiptUpdateJob;
+import org.thoughtcrime.securesms.jobs.RefreshAttributesJob;
 import org.thoughtcrime.securesms.lock.RegistrationLockDialog;
 import org.thoughtcrime.securesms.service.KeyCachingService;
+import org.thoughtcrime.securesms.util.CommunicationActions;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
 import org.whispersystems.signalservice.api.SignalServiceAccountManager;
 
@@ -34,7 +38,8 @@ import mobi.upod.timedurationpicker.TimeDurationPickerDialog;
 
 public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment implements InjectableType {
 
-  private static final String PREFERENCE_CATEGORY_BLOCKED = "preference_category_blocked";
+  private static final String PREFERENCE_CATEGORY_BLOCKED        = "preference_category_blocked";
+  private static final String PREFERENCE_UNIDENTIFIED_LEARN_MORE = "pref_unidentified_learn_more";
 
   @Inject
   SignalServiceAccountManager accountManager;
@@ -55,7 +60,12 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
 
     this.findPreference(TextSecurePreferences.CHANGE_PASSPHRASE_PREF).setOnPreferenceClickListener(new ChangePassphraseClickListener());
     this.findPreference(TextSecurePreferences.READ_RECEIPTS_PREF).setOnPreferenceChangeListener(new ReadReceiptToggleListener());
+    this.findPreference(TextSecurePreferences.TYPING_INDICATORS).setOnPreferenceChangeListener(new TypingIndicatorsToggleListener());
+    this.findPreference(TextSecurePreferences.LINK_PREVIEWS).setOnPreferenceChangeListener(new LinkPreviewToggleListener());
     this.findPreference(PREFERENCE_CATEGORY_BLOCKED).setOnPreferenceClickListener(new BlockedContactsClickListener());
+    this.findPreference(TextSecurePreferences.SHOW_UNIDENTIFIED_DELIVERY_INDICATORS).setOnPreferenceChangeListener(new ShowUnidentifiedDeliveryIndicatorsChangedListener());
+    this.findPreference(TextSecurePreferences.UNIVERSAL_UNIDENTIFIED_ACCESS).setOnPreferenceChangeListener(new UniversalUnidentifiedAccessChangedListener());
+    this.findPreference(PREFERENCE_UNIDENTIFIED_LEARN_MORE).setOnPreferenceClickListener(new UnidentifiedLearnMoreClickListener());
   }
 
   @Override
@@ -142,7 +152,47 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
       boolean enabled = (boolean)newValue;
       ApplicationContext.getInstance(getContext())
                         .getJobManager()
-                        .add(new MultiDeviceReadReceiptUpdateJob(getContext(), enabled));
+                        .add(new MultiDeviceConfigurationUpdateJob(getContext(),
+                                                                   enabled,
+                                                                   TextSecurePreferences.isTypingIndicatorsEnabled(requireContext()),
+                                                                   TextSecurePreferences.isShowUnidentifiedDeliveryIndicatorsEnabled(getContext()),
+                                                                   TextSecurePreferences.isLinkPreviewsEnabled(getContext())));
+
+      return true;
+    }
+  }
+
+  private class TypingIndicatorsToggleListener implements Preference.OnPreferenceChangeListener {
+    @Override
+    public boolean onPreferenceChange(Preference preference, Object newValue) {
+      boolean enabled = (boolean)newValue;
+      ApplicationContext.getInstance(getContext())
+                        .getJobManager()
+                        .add(new MultiDeviceConfigurationUpdateJob(getContext(),
+                                                                   TextSecurePreferences.isReadReceiptsEnabled(requireContext()),
+                                                                   enabled,
+                                                                   TextSecurePreferences.isShowUnidentifiedDeliveryIndicatorsEnabled(getContext()),
+                                                                   TextSecurePreferences.isLinkPreviewsEnabled(getContext())));
+
+      if (!enabled) {
+        ApplicationContext.getInstance(requireContext()).getTypingStatusRepository().clear();
+      }
+
+      return true;
+    }
+  }
+
+  private class LinkPreviewToggleListener implements Preference.OnPreferenceChangeListener {
+    @Override
+    public boolean onPreferenceChange(Preference preference, Object newValue) {
+      boolean enabled = (boolean)newValue;
+      ApplicationContext.getInstance(requireContext())
+                        .getJobManager()
+                        .add(new MultiDeviceConfigurationUpdateJob(requireContext(),
+                                                                   TextSecurePreferences.isReadReceiptsEnabled(requireContext()),
+                                                                   TextSecurePreferences.isTypingIndicatorsEnabled(requireContext()),
+                                                                   TextSecurePreferences.isShowUnidentifiedDeliveryIndicatorsEnabled(requireContext()),
+                                                                   enabled));
 
       return true;
     }
@@ -175,4 +225,37 @@ public class AppProtectionPreferenceFragment extends CorrectedPreferenceFragment
     }
   }
 
+  private class ShowUnidentifiedDeliveryIndicatorsChangedListener implements Preference.OnPreferenceChangeListener {
+    @Override
+    public boolean onPreferenceChange(Preference preference, Object newValue) {
+      boolean enabled = (boolean) newValue;
+      ApplicationContext.getInstance(getContext())
+                        .getJobManager()
+                        .add(new MultiDeviceConfigurationUpdateJob(getContext(),
+                                                                   TextSecurePreferences.isReadReceiptsEnabled(getContext()),
+                                                                   TextSecurePreferences.isTypingIndicatorsEnabled(getContext()),
+                                                                   enabled,
+                                                                   TextSecurePreferences.isLinkPreviewsEnabled(getContext())));
+
+      return true;
+    }
+  }
+
+  private class UniversalUnidentifiedAccessChangedListener implements Preference.OnPreferenceChangeListener {
+    @Override
+    public boolean onPreferenceChange(Preference preference, Object o) {
+      ApplicationContext.getInstance(getContext())
+                        .getJobManager()
+                        .add(new RefreshAttributesJob(getContext()));
+      return true;
+    }
+  }
+
+  private class UnidentifiedLearnMoreClickListener implements Preference.OnPreferenceClickListener {
+    @Override
+    public boolean onPreferenceClick(Preference preference) {
+      CommunicationActions.openBrowserLink(preference.getContext(), "https://signal.org/blog/sealed-sender/");
+      return true;
+    }
+  }
 }

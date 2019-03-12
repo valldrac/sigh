@@ -7,7 +7,7 @@ import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,9 +17,8 @@ import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.load.resource.gif.GifDrawable;
-import com.bumptech.glide.load.resource.gif.GifDrawableEncoder;
-import com.bumptech.glide.load.resource.gif.GifDrawableResource;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.util.ByteBufferUtil;
@@ -27,18 +26,12 @@ import com.bumptech.glide.util.ByteBufferUtil;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.color.MaterialColor;
 import org.thoughtcrime.securesms.giph.model.GiphyImage;
-import org.thoughtcrime.securesms.giph.model.GiphyPaddedUrl;
+import org.thoughtcrime.securesms.giph.model.ChunkedImageUrl;
 import org.thoughtcrime.securesms.mms.GlideApp;
 import org.thoughtcrime.securesms.mms.GlideRequests;
 import org.thoughtcrime.securesms.util.Util;
 import org.thoughtcrime.securesms.util.ViewUtil;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -78,7 +71,7 @@ class GiphyAdapter extends RecyclerView.Adapter<GiphyAdapter.GiphyViewHolder> {
       Log.w(TAG, e);
 
       synchronized (this) {
-        if (new GiphyPaddedUrl(image.getGifUrl(), image.getGifSize()).equals(model)) {
+        if (new ChunkedImageUrl(image.getGifUrl(), image.getGifSize()).equals(model)) {
           this.modelReady = true;
           notifyAll();
         }
@@ -90,7 +83,7 @@ class GiphyAdapter extends RecyclerView.Adapter<GiphyAdapter.GiphyViewHolder> {
     @Override
     public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
       synchronized (this) {
-        if (new GiphyPaddedUrl(image.getGifUrl(), image.getGifSize()).equals(model)) {
+        if (new ChunkedImageUrl(image.getGifUrl(), image.getGifSize()).equals(model)) {
           this.modelReady = true;
           notifyAll();
         }
@@ -108,8 +101,8 @@ class GiphyAdapter extends RecyclerView.Adapter<GiphyAdapter.GiphyViewHolder> {
       }
 
       GifDrawable drawable = glideRequests.asGif()
-                                          .load(forMms ? new GiphyPaddedUrl(image.getGifMmsUrl(), image.getMmsGifSize()) :
-                                                         new GiphyPaddedUrl(image.getGifUrl(), image.getGifSize()))
+                                          .load(forMms ? new ChunkedImageUrl(image.getGifMmsUrl(), image.getMmsGifSize()) :
+                                                         new ChunkedImageUrl(image.getGifUrl(), image.getGifSize()))
                                           .submit(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
                                           .get();
 
@@ -156,22 +149,24 @@ class GiphyAdapter extends RecyclerView.Adapter<GiphyAdapter.GiphyViewHolder> {
     holder.gifProgress.setVisibility(View.GONE);
 
     RequestBuilder<Drawable> thumbnailRequest = GlideApp.with(context)
-                                                        .load(new GiphyPaddedUrl(image.getStillUrl(), image.getStillSize()))
+                                                        .load(new ChunkedImageUrl(image.getStillUrl(), image.getStillSize()))
                                                         .diskCacheStrategy(DiskCacheStrategy.ALL);
 
     if (Util.isLowMemory(context)) {
-      glideRequests.load(new GiphyPaddedUrl(image.getStillUrl(), image.getStillSize()))
+      glideRequests.load(new ChunkedImageUrl(image.getStillUrl(), image.getStillSize()))
                    .placeholder(new ColorDrawable(Util.getRandomElement(MaterialColor.values()).toConversationColor(context)))
                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                   .transition(DrawableTransitionOptions.withCrossFade())
                    .listener(holder)
                    .into(holder.thumbnail);
 
       holder.setModelReady();
     } else {
-      glideRequests.load(new GiphyPaddedUrl(image.getGifUrl(), image.getGifSize()))
+      glideRequests.load(new ChunkedImageUrl(image.getGifUrl(), image.getGifSize()))
                    .thumbnail(thumbnailRequest)
                    .placeholder(new ColorDrawable(Util.getRandomElement(MaterialColor.values()).toConversationColor(context)))
                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                   .transition(DrawableTransitionOptions.withCrossFade())
                    .listener(holder)
                    .into(holder.thumbnail);
     }

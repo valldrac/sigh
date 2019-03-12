@@ -4,12 +4,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.telephony.SmsMessage;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 
 import org.thoughtcrime.securesms.ApplicationContext;
 import org.thoughtcrime.securesms.database.SmsDatabase;
+import org.thoughtcrime.securesms.jobmanager.JobManager;
 import org.thoughtcrime.securesms.jobs.SmsSentJob;
-import org.thoughtcrime.securesms.jobqueue.JobManager;
 
 public class SmsDeliveryListener extends BroadcastReceiver {
 
@@ -22,12 +22,13 @@ public class SmsDeliveryListener extends BroadcastReceiver {
   public void onReceive(Context context, Intent intent) {
     JobManager jobManager = ApplicationContext.getInstance(context).getJobManager();
     long       messageId  = intent.getLongExtra("message_id", -1);
+    int        runAttempt = intent.getIntExtra("run_attempt", 0);
 
     switch (intent.getAction()) {
       case SENT_SMS_ACTION:
         int result = getResultCode();
 
-        jobManager.add(new SmsSentJob(context, messageId, SENT_SMS_ACTION, result));
+        jobManager.add(new SmsSentJob(context, messageId, SENT_SMS_ACTION, result, runAttempt));
         break;
       case DELIVERED_SMS_ACTION:
         byte[] pdu = intent.getByteArrayExtra("pdu");
@@ -46,7 +47,7 @@ public class SmsDeliveryListener extends BroadcastReceiver {
 
         int status = message.getStatus();
 
-        Log.w(TAG, "Original status: " + status);
+        Log.i(TAG, "Original status: " + status);
 
         // Note: https://developer.android.com/reference/android/telephony/SmsMessage.html#getStatus()
         //       " CDMA: For not interfering with status codes from GSM, the value is shifted to the bits 31-16"
@@ -58,7 +59,7 @@ public class SmsDeliveryListener extends BroadcastReceiver {
           else if (status >> 24 == 3) status = SmsDatabase.Status.STATUS_FAILED;
         }
 
-        jobManager.add(new SmsSentJob(context, messageId, DELIVERED_SMS_ACTION, status));
+        jobManager.add(new SmsSentJob(context, messageId, DELIVERED_SMS_ACTION, status, runAttempt));
         break;
       default:
         Log.w(TAG, "Unknown action: " + intent.getAction());

@@ -2,18 +2,20 @@ package org.thoughtcrime.securesms.util;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.TaskStackBuilder;
 import android.text.TextUtils;
+import android.widget.Toast;
 
-import org.thoughtcrime.securesms.ConversationActivity;
+import org.thoughtcrime.securesms.conversation.ConversationActivity;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.WebRtcCallActivity;
-import org.thoughtcrime.securesms.contactshare.Contact;
 import org.thoughtcrime.securesms.database.Address;
 import org.thoughtcrime.securesms.database.DatabaseFactory;
 import org.thoughtcrime.securesms.permissions.Permissions;
@@ -43,9 +45,14 @@ public class CommunicationActions {
         .execute();
   }
 
-  public static void startConversation(@NonNull  Context   context,
-                                       @NonNull  Recipient recipient,
-                                       @Nullable String    text)
+  public static void startConversation(@NonNull Context context, @NonNull Recipient recipient, @Nullable String text) {
+    startConversation(context, recipient, text, null);
+  }
+
+  public static void startConversation(@NonNull  Context          context,
+                                       @NonNull  Recipient        recipient,
+                                       @Nullable String           text,
+                                       @Nullable TaskStackBuilder backStack)
   {
     new AsyncTask<Void, Void, Long>() {
       @Override
@@ -64,7 +71,12 @@ public class CommunicationActions {
           intent.putExtra(ConversationActivity.TEXT_EXTRA, text);
         }
 
-        context.startActivity(intent);
+        if (backStack != null) {
+          backStack.addNextIntent(intent);
+          backStack.startActivities();
+        } else {
+          context.startActivity(intent);
+        }
       }
     }.execute();
   }
@@ -75,5 +87,14 @@ public class CommunicationActions {
       intent.putExtra("sms_body", text);
     }
     context.startActivity(intent);
+  }
+
+  public static void openBrowserLink(@NonNull Context context, @NonNull String link) {
+    try {
+      Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
+      context.startActivity(intent);
+    } catch (ActivityNotFoundException e) {
+      Toast.makeText(context, R.string.CommunicationActions_no_browser_found, Toast.LENGTH_SHORT).show();
+    }
   }
 }

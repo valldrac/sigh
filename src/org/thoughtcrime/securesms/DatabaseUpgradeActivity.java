@@ -25,7 +25,14 @@ import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.preference.PreferenceManager;
-import android.util.Log;
+
+import org.thoughtcrime.securesms.jobmanager.Job;
+import org.thoughtcrime.securesms.jobmanager.JobManager;
+import org.thoughtcrime.securesms.jobmanager.persistence.JavaJobSerializer;
+import org.thoughtcrime.securesms.jobmanager.persistence.PersistentStorage;
+import org.thoughtcrime.securesms.color.MaterialColor;
+import org.thoughtcrime.securesms.contacts.avatars.ContactColorsLegacy;
+import org.thoughtcrime.securesms.logging.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 
@@ -43,6 +50,7 @@ import org.thoughtcrime.securesms.jobs.CreateSignedPreKeyJob;
 import org.thoughtcrime.securesms.jobs.DirectoryRefreshJob;
 import org.thoughtcrime.securesms.jobs.PushDecryptJob;
 import org.thoughtcrime.securesms.jobs.RefreshAttributesJob;
+import org.thoughtcrime.securesms.mms.GlideApp;
 import org.thoughtcrime.securesms.notifications.MessageNotifier;
 import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.FileUtils;
@@ -82,27 +90,15 @@ public class DatabaseUpgradeActivity extends BaseActivity {
   public static final int REMOVE_JOURNAL                       = 353;
   public static final int REMOVE_CACHE                         = 354;
   public static final int FULL_TEXT_SEARCH                     = 358;
+  public static final int BAD_IMPORT_CLEANUP                   = 373;
+  public static final int IMAGE_CACHE_CLEANUP                  = 406;
+  public static final int WORKMANAGER_MIGRATION                = 408;
+  public static final int COLOR_MIGRATION                      = 412;
+  public static final int UNIDENTIFIED_DELIVERY                = 422;
+  public static final int SIGNALING_KEY_DEPRECATION            = 447;
+  public static final int CONVERSATION_SEARCH                  = 455;
 
   private static final SortedSet<Integer> UPGRADE_VERSIONS = new TreeSet<Integer>() {{
-    add(NO_MORE_KEY_EXCHANGE_PREFIX_VERSION);
-    add(TOFU_IDENTITIES_VERSION);
-    add(CURVE25519_VERSION);
-    add(ASYMMETRIC_MASTER_SECRET_FIX_VERSION);
-    add(NO_V1_VERSION);
-    add(SIGNED_PREKEY_VERSION);
-    add(NO_DECRYPT_QUEUE_VERSION);
-    add(PUSH_DECRYPT_SERIAL_ID_VERSION);
-    add(MIGRATE_SESSION_PLAINTEXT);
-    add(MEDIA_DOWNLOAD_CONTROLS_VERSION);
-    add(REDPHONE_SUPPORT_VERSION);
-    add(NO_MORE_CANONICAL_DB_VERSION);
-    add(SCREENSHOTS);
-    add(INTERNALIZE_CONTACTS);
-    add(PERSISTENT_BLOBS);
-    add(SQLCIPHER);
-    add(SQLCIPHER_COMPLETE);
-    add(REMOVE_CACHE);
-    add(FULL_TEXT_SEARCH);
   }};
 
   @Override
@@ -110,7 +106,7 @@ public class DatabaseUpgradeActivity extends BaseActivity {
     super.onCreate(bundle);
 
     if (needsUpgradeTask()) {
-      Log.w("DatabaseUpgradeActivity", "Upgrading...");
+      Log.i("DatabaseUpgradeActivity", "Upgrading...");
       setContentView(R.layout.database_upgrade_activity);
 
       ProgressBar indeterminateProgress = findViewById(R.id.indeterminate_progress);
@@ -130,13 +126,13 @@ public class DatabaseUpgradeActivity extends BaseActivity {
     int currentVersionCode = Util.getCurrentApkReleaseVersion(this);
     int lastSeenVersion    = VersionTracker.getLastSeenVersion(this);
 
-    Log.w("DatabaseUpgradeActivity", "LastSeenVersion: " + lastSeenVersion);
+    Log.i("DatabaseUpgradeActivity", "LastSeenVersion: " + lastSeenVersion);
 
     if (lastSeenVersion >= currentVersionCode)
       return false;
 
     for (int version : UPGRADE_VERSIONS) {
-      Log.w("DatabaseUpgradeActivity", "Comparing: " + version);
+      Log.i("DatabaseUpgradeActivity", "Comparing: " + version);
       if (lastSeenVersion < version)
         return true;
     }
@@ -188,7 +184,7 @@ public class DatabaseUpgradeActivity extends BaseActivity {
       Context context = DatabaseUpgradeActivity.this.getApplicationContext();
       MasterSecret masterSecret = KeyCachingService.getMasterSecret();
 
-      Log.w("DatabaseUpgradeActivity", "Running background upgrade..");
+      Log.i("DatabaseUpgradeActivity", "Running background upgrade..");
       DatabaseFactory.getInstance(DatabaseUpgradeActivity.this)
                      .onApplicationLevelUpgrade(context, masterSecret, params[0], this);
 

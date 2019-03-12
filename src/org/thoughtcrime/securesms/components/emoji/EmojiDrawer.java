@@ -2,11 +2,12 @@ package org.thoughtcrime.securesms.components.emoji;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
-import android.util.Log;
+
+import org.thoughtcrime.securesms.components.emoji.EmojiPageViewGridAdapter.VariationSelectorListener;
+import org.thoughtcrime.securesms.logging.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,7 +28,10 @@ import org.thoughtcrime.securesms.util.ResUtil;
 import java.util.LinkedList;
 import java.util.List;
 
-public class EmojiDrawer extends LinearLayout implements InputView {
+public class EmojiDrawer extends LinearLayout implements InputView, EmojiSelectionListener, VariationSelectorListener {
+
+  private static final String TAG = EmojiDrawer.class.getSimpleName();
+
   private static final KeyEvent DELETE_KEY_EVENT = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL);
 
   private ViewPager            pager;
@@ -62,7 +66,7 @@ public class EmojiDrawer extends LinearLayout implements InputView {
   }
 
   private void initializeResources(View v) {
-    Log.w("EmojiDrawer", "initializeResources()");
+    Log.i(TAG, "initializeResources()");
     this.pager     = (ViewPager)            v.findViewById(R.id.emoji_pager);
     this.strip     = (PagerSlidingTabStrip) v.findViewById(R.id.tabs);
 
@@ -85,7 +89,7 @@ public class EmojiDrawer extends LinearLayout implements InputView {
     if (this.pager == null) initView();
     ViewGroup.LayoutParams params = getLayoutParams();
     params.height = height;
-    Log.w("EmojiDrawer", "showing emoji drawer with height " + params.height);
+    Log.i(TAG, "showing emoji drawer with height " + params.height);
     setLayoutParams(params);
     setVisibility(VISIBLE);
     if (drawerListener != null) drawerListener.onShown();
@@ -95,22 +99,26 @@ public class EmojiDrawer extends LinearLayout implements InputView {
   public void hide(boolean immediate) {
     setVisibility(GONE);
     if (drawerListener != null) drawerListener.onHidden();
-    Log.w("EmojiDrawer", "hide()");
+    Log.i(TAG, "hide()");
+  }
+
+  @Override
+  public void onEmojiSelected(String emoji) {
+    recentModel.onCodePointSelected(emoji);
+    if (listener != null) {
+      listener.onEmojiSelected(emoji);
+    }
+  }
+
+  @Override
+  public void onVariationSelectorStateChanged(boolean open) {
+    pager.setEnabled(!open);
   }
 
   private void initializeEmojiGrid() {
-    pager.setAdapter(new EmojiPagerAdapter(getContext(),
-                                           models,
-                                           new EmojiSelectionListener() {
-                                             @Override
-                                             public void onEmojiSelected(String emoji) {
-                                               Log.w("EmojiDrawer", "onEmojiSelected()");
-                                               recentModel.onCodePointSelected(emoji);
-                                               if (listener != null) listener.onEmojiSelected(emoji);
-                                             }
-                                           }));
+    pager.setAdapter(new EmojiPagerAdapter(getContext(), models, this, this));
 
-    if (recentModel.getEmoji().length == 0) {
+    if (recentModel.getDisplayEmoji().size() == 0) {
       pager.setCurrentItem(1);
     }
     strip.setViewPager(pager);
@@ -120,24 +128,27 @@ public class EmojiDrawer extends LinearLayout implements InputView {
     this.models = new LinkedList<>();
     this.recentModel = new RecentEmojiPageModel(getContext());
     this.models.add(recentModel);
-    this.models.addAll(EmojiPages.PAGES);
+    this.models.addAll(EmojiPages.DISPLAY_PAGES);
   }
 
   public static class EmojiPagerAdapter extends PagerAdapter
       implements PagerSlidingTabStrip.CustomTabProvider
   {
-    private Context                context;
-    private List<EmojiPageModel>   pages;
-    private EmojiSelectionListener listener;
+    private Context                   context;
+    private List<EmojiPageModel>      pages;
+    private EmojiSelectionListener    emojiSelectionListener;
+    private VariationSelectorListener variationSelectorListener;
 
     public EmojiPagerAdapter(@NonNull Context context,
                              @NonNull List<EmojiPageModel> pages,
-                             @Nullable EmojiSelectionListener listener)
+                             @NonNull EmojiSelectionListener emojiSelectionListener,
+                             @NonNull VariationSelectorListener variationSelectorListener)
     {
       super();
-      this.context  = context;
-      this.pages    = pages;
-      this.listener = listener;
+      this.context                   = context;
+      this.pages                     = pages;
+      this.emojiSelectionListener    = emojiSelectionListener;
+      this.variationSelectorListener = variationSelectorListener;
     }
 
     @Override
@@ -146,10 +157,9 @@ public class EmojiDrawer extends LinearLayout implements InputView {
     }
 
     @Override
-    public Object instantiateItem(ViewGroup container, int position) {
-      EmojiPageView page = new EmojiPageView(context);
+    public @NonNull Object instantiateItem(@NonNull ViewGroup container, int position) {
+      EmojiPageView page = new EmojiPageView(context, emojiSelectionListener, variationSelectorListener);
       page.setModel(pages.get(position));
-      page.setEmojiSelectedListener(listener);
       container.addView(page);
       return page;
     }

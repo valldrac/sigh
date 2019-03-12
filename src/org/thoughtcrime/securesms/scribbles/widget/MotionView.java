@@ -36,9 +36,9 @@ import android.support.v4.view.ViewCompat;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.Selection;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.Gravity;
@@ -49,14 +49,19 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 
+import com.annimon.stream.Stream;
+
 import org.thoughtcrime.securesms.R;
+import org.thoughtcrime.securesms.logging.Log;
 import org.thoughtcrime.securesms.scribbles.multitouch.MoveGestureDetector;
 import org.thoughtcrime.securesms.scribbles.multitouch.RotateGestureDetector;
 import org.thoughtcrime.securesms.scribbles.widget.entity.MotionEntity;
 import org.thoughtcrime.securesms.scribbles.widget.entity.TextEntity;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MotionView  extends FrameLayout implements TextWatcher {
 
@@ -143,6 +148,17 @@ public class MotionView  extends FrameLayout implements TextWatcher {
     updateUI();
   }
 
+  public SavedState saveState() {
+    return new SavedState(entities);
+  }
+
+  public void restoreState(@NonNull SavedState savedState) {
+    this.entities.clear();
+    this.entities.addAll(savedState.getEntities());
+
+    postInvalidate();
+  }
+
   public void startEditing(TextEntity entity) {
     editText.setFocusableInTouchMode(true);
     editText.setFocusable(true);
@@ -182,6 +198,18 @@ public class MotionView  extends FrameLayout implements TextWatcher {
     }
   }
 
+  public @NonNull Set<Integer> getUniqueColors() {
+    Set<Integer> colors = new LinkedHashSet<>();
+
+    for (MotionEntity entity : entities) {
+      if (entity instanceof TextEntity) {
+        colors.add(((TextEntity) entity).getLayer().getFont().getColor());
+      }
+    }
+
+    return colors;
+  }
+
   private void initEntityBorder(@NonNull MotionEntity entity ) {
     // init stroke
     int strokeSize = getResources().getDimensionPixelSize(R.dimen.scribble_stroke_size);
@@ -209,7 +237,7 @@ public class MotionView  extends FrameLayout implements TextWatcher {
   @Override
   protected void onDraw(Canvas canvas) {
     super.onDraw(canvas);
-    drawAllEntities(canvas);
+    render(canvas, entities);
   }
 
   public void render(Canvas canvas) {
@@ -217,11 +245,7 @@ public class MotionView  extends FrameLayout implements TextWatcher {
     draw(canvas);
   }
 
-  /**
-   * draws all entities on the canvas
-   * @param canvas Canvas where to draw all entities
-   */
-  private void drawAllEntities(Canvas canvas) {
+  public static void render(Canvas canvas, List<MotionEntity> entities) {
     for (int i = 0; i < entities.size(); i++) {
       entities.get(i).draw(canvas, null);
     }
@@ -239,7 +263,7 @@ public class MotionView  extends FrameLayout implements TextWatcher {
     // which doesn't have transparent pixels, the background will be black
     bmp.eraseColor(Color.WHITE);
     Canvas canvas = new Canvas(bmp);
-    drawAllEntities(canvas);
+    render(canvas, entities);
 
     return bmp;
   }
@@ -274,14 +298,17 @@ public class MotionView  extends FrameLayout implements TextWatcher {
   }
 
   private void selectEntity(@Nullable MotionEntity entity, boolean updateCallback) {
-    if (selectedEntity != null) {
+    if (selectedEntity != null && entity != selectedEntity) {
       selectedEntity.setIsSelected(false);
 
       if (selectedEntity instanceof TextEntity) {
-        editText.clearComposingText();
-        editText.clearFocus();
-
-        InputMethodManager imm = (InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (TextUtils.isEmpty(((TextEntity) selectedEntity).getLayer().getText())) {
+          deletedSelectedEntity();
+        } else {
+          editText.clearComposingText();
+          editText.clearFocus();
+        }
+        InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
       }
 
@@ -413,6 +440,12 @@ public class MotionView  extends FrameLayout implements TextWatcher {
       updateSelectionOnTap(e);
       return true;
     }
+
+    @Override
+    public boolean onDown(MotionEvent e) {
+      updateSelectionOnTap(e);
+      return false;
+    }
   }
 
   private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
@@ -420,7 +453,7 @@ public class MotionView  extends FrameLayout implements TextWatcher {
     public boolean onScale(ScaleGestureDetector detector) {
       if (selectedEntity != null) {
         float scaleFactorDiff = detector.getScaleFactor();
-        Log.w(TAG, "ScaleFactorDiff: " + scaleFactorDiff);
+        Log.d(TAG, "ScaleFactorDiff: " + scaleFactorDiff);
         selectedEntity.getLayer().postScale(scaleFactorDiff - 1.0F);
         selectedEntity.updateEntity();
         updateUI();
@@ -470,4 +503,21 @@ public class MotionView  extends FrameLayout implements TextWatcher {
     }
   }
 
+  static class SavedState {
+
+    private final List<MotionEntity> entities;
+
+    SavedState(List<MotionEntity> entities) {
+      this.entities = new ArrayList<>(entities);
+      Stream.of(entities).forEach(e -> e.setIsSelected(false));
+    }
+
+    List<MotionEntity> getEntities() {
+      return entities;
+    }
+
+    boolean isEmpty() {
+      return entities.isEmpty();
+    }
+  }
 }

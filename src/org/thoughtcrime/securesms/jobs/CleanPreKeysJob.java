@@ -1,13 +1,15 @@
 package org.thoughtcrime.securesms.jobs;
 
 import android.content.Context;
-import android.util.Log;
+import android.support.annotation.NonNull;
+
+import org.thoughtcrime.securesms.jobmanager.SafeData;
+import org.thoughtcrime.securesms.logging.Log;
 
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.crypto.PreKeyUtil;
 import org.thoughtcrime.securesms.dependencies.InjectableType;
-import org.thoughtcrime.securesms.jobs.requirements.MasterSecretRequirement;
-import org.thoughtcrime.securesms.jobqueue.JobParameters;
+import org.thoughtcrime.securesms.jobmanager.JobParameters;
 import org.whispersystems.libsignal.InvalidKeyIdException;
 import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 import org.whispersystems.libsignal.state.SignedPreKeyStore;
@@ -24,9 +26,12 @@ import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import androidx.work.Data;
+import androidx.work.WorkerParameters;
+
 import static org.thoughtcrime.securesms.dependencies.AxolotlStorageModule.SignedPreKeyStoreFactory;
 
-public class CleanPreKeysJob extends MasterSecretJob implements InjectableType {
+public class CleanPreKeysJob extends ContextJob implements InjectableType {
 
   private static final String TAG = CleanPreKeysJob.class.getSimpleName();
 
@@ -35,23 +40,30 @@ public class CleanPreKeysJob extends MasterSecretJob implements InjectableType {
   @Inject transient SignalServiceAccountManager accountManager;
   @Inject transient SignedPreKeyStoreFactory signedPreKeyStoreFactory;
 
+  public CleanPreKeysJob(@NonNull Context context, @NonNull WorkerParameters workerParameters) {
+    super(context, workerParameters);
+  }
+
   public CleanPreKeysJob(Context context) {
     super(context, JobParameters.newBuilder()
                                 .withGroupId(CleanPreKeysJob.class.getSimpleName())
-                                .withRequirement(new MasterSecretRequirement(context))
                                 .withRetryCount(5)
                                 .create());
   }
 
   @Override
-  public void onAdded() {
-
+  protected void initialize(@NonNull SafeData data) {
   }
 
   @Override
-  public void onRun(MasterSecret masterSecret) throws IOException {
+  protected @NonNull Data serialize(@NonNull Data.Builder dataBuilder) {
+    return dataBuilder.build();
+  }
+
+  @Override
+  public void onRun() throws IOException {
     try {
-      Log.w(TAG, "Cleaning prekeys...");
+      Log.i(TAG, "Cleaning prekeys...");
 
       int                activeSignedPreKeyId = PreKeyUtil.getActiveSignedPreKeyId(context);
       SignedPreKeyStore  signedPreKeyStore    = signedPreKeyStoreFactory.create();
@@ -64,8 +76,8 @@ public class CleanPreKeysJob extends MasterSecretJob implements InjectableType {
 
       Collections.sort(oldRecords, new SignedPreKeySorter());
 
-      Log.w(TAG, "Active signed prekey: " + activeSignedPreKeyId);
-      Log.w(TAG, "Old signed prekey record count: " + oldRecords.size());
+      Log.i(TAG, "Active signed prekey: " + activeSignedPreKeyId);
+      Log.i(TAG, "Old signed prekey record count: " + oldRecords.size());
 
       boolean foundAgedRecord = false;
 
@@ -76,7 +88,7 @@ public class CleanPreKeysJob extends MasterSecretJob implements InjectableType {
           if (!foundAgedRecord) {
             foundAgedRecord = true;
           } else {
-            Log.w(TAG, "Removing signed prekey record: " + oldRecord.getId() + " with timestamp: " + oldRecord.getTimestamp());
+            Log.i(TAG, "Removing signed prekey record: " + oldRecord.getId() + " with timestamp: " + oldRecord.getTimestamp());
             signedPreKeyStore.removeSignedPreKey(oldRecord.getId());
           }
         }
@@ -87,7 +99,7 @@ public class CleanPreKeysJob extends MasterSecretJob implements InjectableType {
   }
 
   @Override
-  public boolean onShouldRetryThrowable(Exception throwable) {
+  public boolean onShouldRetry(Exception throwable) {
     if (throwable instanceof NonSuccessfulResponseCodeException) return false;
     if (throwable instanceof PushNetworkException)               return true;
     return false;

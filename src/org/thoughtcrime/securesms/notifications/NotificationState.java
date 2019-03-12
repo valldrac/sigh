@@ -6,11 +6,11 @@ import android.content.Intent;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
-import org.thoughtcrime.securesms.ConversationActivity;
-import org.thoughtcrime.securesms.ConversationPopupActivity;
+import org.thoughtcrime.securesms.conversation.ConversationActivity;
+import org.thoughtcrime.securesms.conversation.ConversationPopupActivity;
 import org.thoughtcrime.securesms.database.RecipientDatabase.VibrateState;
+import org.thoughtcrime.securesms.logging.Log;
 import org.thoughtcrime.securesms.recipients.Recipient;
 
 import java.util.LinkedHashSet;
@@ -18,6 +18,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class NotificationState {
+
+  private static final String TAG = NotificationState.class.getSimpleName();
 
   private final LinkedList<NotificationItem> notifications = new LinkedList<>();
   private final LinkedHashSet<Long>          threads       = new LinkedHashSet<>();
@@ -43,12 +45,13 @@ public class NotificationState {
     notificationCount++;
   }
 
-  public @Nullable Uri getRingtone() {
+  public @Nullable Uri getRingtone(@NonNull Context context) {
     if (!notifications.isEmpty()) {
       Recipient recipient = notifications.getFirst().getRecipient();
 
       if (recipient != null) {
-        return recipient.resolve().getMessageRingtone();
+        return NotificationChannels.supported() ? NotificationChannels.getMessageRingtone(context, recipient)
+                                                : recipient.resolve().getMessageRingtone();
       }
     }
 
@@ -102,7 +105,7 @@ public class NotificationState {
     int    index       = 0;
 
     for (long thread : threads) {
-      Log.w("NotificationState", "Added thread: " + thread);
+      Log.i(TAG, "Added thread: " + thread);
       threadArray[index++] = thread;
     }
 
@@ -145,7 +148,7 @@ public class NotificationState {
     long[] threadArray = new long[threads.size()];
     int    index       = 0;
     for (long thread : threads) {
-      Log.w("NotificationState", "getAndroidAutoHeardIntent Added thread: " + thread);
+      Log.i(TAG, "getAndroidAutoHeardIntent Added thread: " + thread);
       threadArray[index++] = thread;
     }
 

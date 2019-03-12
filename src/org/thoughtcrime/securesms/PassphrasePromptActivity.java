@@ -32,7 +32,7 @@ import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.TypefaceSpan;
-import android.util.Log;
+import org.thoughtcrime.securesms.logging.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -74,7 +74,7 @@ public class PassphrasePromptActivity extends PassphraseActivity {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
-    Log.w(TAG, "onCreate()");
+    Log.i(TAG, "onCreate()");
     dynamicTheme.onCreate(this);
     dynamicLanguage.onCreate(this);
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);

@@ -21,7 +21,7 @@ import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -34,6 +34,7 @@ import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.LoadControl;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
@@ -46,6 +47,8 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelection;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
+import com.google.android.exoplayer2.ui.PlayerControlView;
+import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.ui.SimpleExoPlayerView;
 import com.google.android.exoplayer2.upstream.BandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
@@ -53,6 +56,7 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.attachments.AttachmentServer;
+import org.thoughtcrime.securesms.logging.Log;
 import org.thoughtcrime.securesms.mms.PartAuthority;
 import org.thoughtcrime.securesms.mms.VideoSlide;
 import org.thoughtcrime.securesms.util.ViewUtil;
@@ -62,12 +66,13 @@ import java.io.IOException;
 
 public class VideoPlayer extends FrameLayout {
 
-  private static final String TAG = VideoPlayer.class.getName();
+  private static final String TAG = VideoPlayer.class.getSimpleName();
 
   @Nullable private final VideoView           videoView;
-  @Nullable private final SimpleExoPlayerView exoView;
+  @Nullable private final PlayerView          exoView;
 
   @Nullable private       SimpleExoPlayer     exoPlayer;
+  @Nullable private       PlayerControlView   exoControls;
   @Nullable private       AttachmentServer    attachmentServer;
   @Nullable private       Window              window;
 
@@ -87,6 +92,8 @@ public class VideoPlayer extends FrameLayout {
     if (Build.VERSION.SDK_INT >= 16) {
       this.exoView   = ViewUtil.findById(this, R.id.video_view);
       this.videoView = null;
+      this.exoControls = new PlayerControlView(getContext());
+      this.exoControls.setShowTimeoutMs(-1);
     } else {
       this.videoView = ViewUtil.findById(this, R.id.video_view);
       this.exoView   = null;
@@ -107,6 +114,19 @@ public class VideoPlayer extends FrameLayout {
     } else if (this.exoPlayer != null) {
       this.exoPlayer.setPlayWhenReady(false);
     }
+  }
+
+  public void hideControls() {
+    if (this.exoView != null) {
+      this.exoView.hideController();
+    }
+  }
+
+  public @Nullable View getControlView() {
+    if (this.exoControls != null) {
+      return this.exoControls;
+    }
+    return null;
   }
 
   public void cleanup() {
@@ -135,6 +155,8 @@ public class VideoPlayer extends FrameLayout {
     exoPlayer.addListener(new ExoPlayerListener(window));
     //noinspection ConstantConditions
     exoView.setPlayer(exoPlayer);
+    //noinspection ConstantConditions
+    exoControls.setPlayer(exoPlayer);
 
     DefaultDataSourceFactory    defaultDataSourceFactory    = new DefaultDataSourceFactory(getContext(), "GenericUserAgent", null);
     AttachmentDataSourceFactory attachmentDataSourceFactory = new AttachmentDataSourceFactory(getContext(), defaultDataSourceFactory, null);
@@ -154,14 +176,14 @@ public class VideoPlayer extends FrameLayout {
     }
 
     if (videoSource.getUri() != null && PartAuthority.isLocalUri(videoSource.getUri())) {
-      Log.w(TAG, "Starting video attachment server for part provider Uri...");
+      Log.i(TAG, "Starting video attachment server for part provider Uri...");
       this.attachmentServer = new AttachmentServer(getContext(), videoSource.asAttachment());
       this.attachmentServer.start();
 
       //noinspection ConstantConditions
       this.videoView.setVideoURI(this.attachmentServer.getUri());
     } else if (videoSource.getUri() != null) {
-      Log.w(TAG, "Playing video directly from non-local Uri...");
+      Log.i(TAG, "Playing video directly from non-local Uri...");
       //noinspection ConstantConditions
       this.videoView.setVideoURI(videoSource.getUri());
     } else {
@@ -180,7 +202,7 @@ public class VideoPlayer extends FrameLayout {
     videoView.setMediaController(mediaController);
   }
 
-  private static class ExoPlayerListener implements ExoPlayer.EventListener {
+  private static class ExoPlayerListener extends Player.DefaultEventListener {
     private final Window window;
 
     ExoPlayerListener(Window window) {
@@ -190,12 +212,12 @@ public class VideoPlayer extends FrameLayout {
     @Override
     public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
       switch(playbackState) {
-        case ExoPlayer.STATE_IDLE:
-        case ExoPlayer.STATE_BUFFERING:
-        case ExoPlayer.STATE_ENDED:
+        case Player.STATE_IDLE:
+        case Player.STATE_BUFFERING:
+        case Player.STATE_ENDED:
           window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
           break;
-        case ExoPlayer.STATE_READY:
+        case Player.STATE_READY:
           if (playWhenReady) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
           } else {
@@ -206,20 +228,5 @@ public class VideoPlayer extends FrameLayout {
           break;
       }
     }
-
-    @Override
-    public void onTimelineChanged(Timeline timeline, Object manifest) { }
-
-    @Override
-    public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) { }
-
-    @Override
-    public void onLoadingChanged(boolean isLoading) { }
-
-    @Override
-    public void onPlayerError(ExoPlaybackException error) { }
-
-    @Override
-    public void onPositionDiscontinuity() { }
   }
 }
