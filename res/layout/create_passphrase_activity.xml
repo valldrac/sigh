@@ -3,6 +3,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
             android:fillViewport="true">
 
     <FrameLayout android:layout_width="fill_parent"
@@ -10,12 +11,14 @@
                  android:gravity="center">
 
         <LinearLayout android:id="@+id/create_layout"
-                      android:paddingRight="16dip"
-                      android:paddingLeft="16dip"
-                      android:paddingTop="10dip"
+                      android:layout_marginStart="32dp"
+                      android:layout_marginLeft="32dp"
+                      android:layout_marginTop="32dp"
+                      android:layout_marginEnd="32dp"
+                      android:layout_marginRight="32dp"
+                      android:layout_marginBottom="16dp"
                       android:layout_width="fill_parent"
                       android:layout_height="wrap_content"
-                      android:layout_gravity="center"
                       android:visibility="visible"
                       android:orientation="vertical">
 
@@ -53,18 +56,23 @@
 
             <LinearLayout android:orientation="horizontal"
                 android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="30dip">
+                android:layout_height="50dp"
+                android:layout_marginTop="32dip">
 
-                <Button android:id="@+id/ok_button"
-                    android:text="@string/create_passphrase_activity__continue"
-                    android:layout_weight="1"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="?android:attr/textAppearanceMedium"/>
+                <com.dd.CircularProgressButton
+                    android:id="@+id/ok_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="40dp"
+                    android:background="@color/signal_primary"
+                    android:textColor="@color/white"
+                    app:cpb_colorIndicator="@color/white"
+                    app:cpb_colorProgress="@color/textsecure_primary"
+                    app:cpb_cornerRadius="4dp"
+                    app:cpb_selectorIdle="@drawable/progress_button_state"
+                    app:cpb_textIdle="@string/create_passphrase_activity__continue" />
             </LinearLayout>
-
-
         </LinearLayout>
 
         <LinearLayout android:id="@+id/progress_layout"
@@ -84,7 +92,8 @@
                       android:gravity="center"
                       android:text="@string/create_passphrase_activity__generating_secrets"/>
 
-            <ProgressBar android:layout_width="wrap_content"
+            <ProgressBar android:id="@+id/indeterminate_progress"
+                         android:layout_width="wrap_content"
                          android:layout_height="wrap_content"
                          android:indeterminate="true"
                          android:layout_gravity="center"/>

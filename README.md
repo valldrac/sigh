@@ -1,4 +1,4 @@
-# Sigh Android
+# sigH Android
 
 A fork of [Signal Android](https://github.com/signalapp/Signal-Android) that encrypts app data and keys with a passphrase.
 
@@ -27,7 +27,7 @@ Identity key pair is stored in plain text in [Preferences](https://developer.and
 
 ### Q: Can I install it along with Signal?
 
-Yes, you can install and run both apps on the same device. The app identifier was changed to `Sigh` so they will not share storage or configuration.
+Yes, you can install and run both apps on the same device. The app identifier was changed to **sigH** so they will not share storage or configuration.
 
 ### Q: Can the app receive messages while locked?
 

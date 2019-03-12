@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Sigh</string>
+    <string name="app_name">sigH</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="delete">Delete</string>
@@ -851,7 +851,7 @@
     <string name="create_passphrase_activity__new_passphrase">New passphrase</string>
     <string name="create_passphrase_activity__repeat_new_passphrase">Repeat new passphrase</string>
     <string name="create_passphrase_activity__continue">Continue</string>
-    <string name="create_passphrase_activity__generating_secrets">GENERATING SECRETS</string>
+    <string name="create_passphrase_activity__generating_secrets">Generating secrets...</string>
 
     <!-- contact_selection_activity -->
     <string name="contact_selection_activity__enter_name_or_number">Enter name or number</string>
