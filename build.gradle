@@ -503,3 +503,7 @@ def getLastCommitTimestamp() {
         return os.toString() + "000"
     }
 }
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xmaxerrs" << "1000"
+}
