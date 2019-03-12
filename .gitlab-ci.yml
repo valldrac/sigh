@@ -30,7 +30,7 @@ stages:
 assemble:
   stage: build
   script:
-    - ./gradlew assemble
+    - ./gradlew assemble -x signProductionPlayRelease -x signProductionWebsiteRelease
   artifacts:
     paths:
       - build/outputs/
