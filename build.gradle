@@ -327,7 +327,7 @@ android {
         resValue 'string', 'package_name', applicationId
 
         ndk {
-            abiFilters "armeabi", "armeabi-v7a", "x86"
+            abiFilters "armeabi-v7a", "x86"
         }
     }
 
@@ -420,6 +420,12 @@ android {
         }
 
         website.manifest.srcFile 'website/AndroidManifest.xml'
+    }
+
+    externalNativeBuild {
+        ndkBuild {
+            path "jni/Android.mk"
+        }
     }
 
      lintOptions {

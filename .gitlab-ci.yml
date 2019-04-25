@@ -6,11 +6,14 @@ variables:
   ANDROID_SDK_TOOLS:   "4333796"
 
 before_script:
+  - apt-get update -qq && apt-get install -y -qq file make
   - wget -q -O android-sdk.zip "https://dl.google.com/android/repository/sdk-tools-linux-${ANDROID_SDK_TOOLS}.zip"
   - unzip -q -d android-sdk-linux android-sdk.zip
+  - mkdir -p ~/.android && touch ~/.android/repositories.cfg
   - echo y | android-sdk-linux/tools/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null
   - echo y | android-sdk-linux/tools/bin/sdkmanager "platform-tools" >/dev/null
   - echo y | android-sdk-linux/tools/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null
+  - echo y | android-sdk-linux/tools/bin/sdkmanager "ndk-bundle" >/dev/null
   - export ANDROID_HOME=$PWD/android-sdk-linux
   - export PATH=$PATH:$ANDROID_HOME/platform-tools/
   - yes | android-sdk-linux/tools/bin/sdkmanager --licenses >/dev/null || true
