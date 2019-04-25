@@ -229,7 +229,10 @@ public class KeyCachingService extends Service {
       PendingIntent expirationIntent = buildExpirationPendingIntent(context);
 
       alarmManager.cancel(expirationIntent);
-      alarmManager.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + timeoutMillis, expirationIntent);
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeoutMillis, expirationIntent);
+      else
+        alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeoutMillis, expirationIntent);
     }
   }
 
