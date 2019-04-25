@@ -258,10 +258,6 @@ public class ConversationListActivity extends PassphraseRequiredActionBarActivit
   }
 
   private void handleClearPassphrase() {
-    ProgressDialog.show(this,"",
-                        getString(R.string.ConversationListActivity_signal_is_clearing_secrets),
-                        true, false);
-
     Intent intent = new Intent(this, KeyCachingService.class);
     intent.setAction(KeyCachingService.CLEAR_KEY_ACTION);
     startService(intent);

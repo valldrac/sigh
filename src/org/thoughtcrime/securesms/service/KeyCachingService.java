@@ -169,20 +169,34 @@ public class KeyCachingService extends Service {
   private void handleClearKey() {
     Log.w(TAG, "handleClearKey()");
     synchronized (KeyCachingService.class) {
-      KeyCachingService.masterSecret.destroy();
-      KeyCachingService.masterSecret = null;
-
-      stopForeground(true);
+      if (KeyCachingService.masterSecret == null)
+        return;
 
       Intent intent = new Intent(CLEAR_KEY_EVENT);
       intent.setPackage(getApplicationContext().getPackageName());
 
       sendBroadcast(intent, KEY_PERMISSION);
 
+      Log.i(TAG, "Scheduling Memory Wipe...");
+
       new AsyncTask<Void, Void, Void>() {
         @Override
         protected Void doInBackground(Void... params) {
           MessageNotifier.clearNotifications(KeyCachingService.this, true);
+
+          try {
+            Thread.sleep(2000);
+          } catch (InterruptedException ignored) {}
+
+          KeyCachingService.masterSecret.destroy();
+          stopForeground(true);
+
+          Intent intent = new Intent(KeyCachingService.this, MemoryWipeService.class);
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            startForegroundService(intent);
+          else
+            startService(intent);
+
           return null;
         }
       }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);

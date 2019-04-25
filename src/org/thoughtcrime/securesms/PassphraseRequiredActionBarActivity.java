@@ -17,11 +17,8 @@ import org.thoughtcrime.securesms.push.SignalServiceNetworkAccess;
 import org.thoughtcrime.securesms.registration.WelcomeActivity;
 import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.TextSecurePreferences;
-import org.thoughtcrime.securesms.util.Util;
 
 import java.util.Locale;
-
-import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 
 public abstract class PassphraseRequiredActionBarActivity extends BaseActionBarActivity implements MasterSecretListener {
   private static final String TAG = PassphraseRequiredActionBarActivity.class.getSimpleName();
@@ -85,22 +82,7 @@ public abstract class PassphraseRequiredActionBarActivity extends BaseActionBarA
   @Override
   public void onMasterSecretCleared() {
     Log.i(TAG, "onMasterSecretCleared()");
-    killProcess();
-  }
-
-  private void killProcess() {
-    Runnable runnable = () -> {
-      try {
-        Thread.sleep(2000);
-      } catch (InterruptedException e) {
-        throw new AssertionError(e);
-      }
-      if (ApplicationContext.getInstance(this).isAppVisible()) {
-        routeApplicationState(true);
-      }
-      System.exit(0);
-    };
-    new Thread(runnable).start();
+    finish();
   }
 
   protected <T extends Fragment> T initFragment(@IdRes int target,

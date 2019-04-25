@@ -231,7 +231,6 @@
 
     <!-- ConversationListActivity -->
     <string name="ConversationListActivity_there_is_no_browser_installed_on_your_device">There is no browser installed on your device.</string>
-    <string name="ConversationListActivity_signal_is_clearing_secrets">Signal is clearing secrets...</string>
 
     <!-- ConversationListFragment -->
     <string name="ConversationListFragment_no_results_found_for_s_">No results found for \'%s\'</string>
@@ -736,6 +735,9 @@
     <string name="KeyCachingService_signal_passphrase_cached_with_lock">Touch to open, or touch the lock to close.</string>
     <string name="KeyCachingService_passphrase_cached">Signal is unlocked</string>
     <string name="KeyCachingService_lock">Lock Signal</string>
+
+    <!-- MemoryWipeService -->
+    <string name="MemoryWipeService_signal_is_clearing_secrets">Signal is clearing secrets...</string>
 
     <!-- MediaPreviewActivity -->
     <string name="MediaPreviewActivity_you">You</string>
