@@ -577,15 +577,15 @@
     </provider>
 
     <provider android:name=".database.DatabaseContentProviders$Conversation"
-              android:authorities="org.thoughtcrime.securesms.database.conversation"
+              android:authorities="${applicationId}.database.conversation"
               android:exported="false" />
 
     <provider android:name=".database.DatabaseContentProviders$ConversationList"
-              android:authorities="org.thoughtcrime.securesms.database.conversationlist"
+              android:authorities="${applicationId}.database.conversationlist"
               android:exported="false" />
 
     <provider android:name=".database.DatabaseContentProviders$Attachment"
-              android:authorities="org.thoughtcrime.securesms.database.attachment"
+              android:authorities="${applicationId}.database.attachment"
               android:exported="false" />
 
     <provider
